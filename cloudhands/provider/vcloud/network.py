@@ -1,6 +1,7 @@
 """JASMIN Cloud
 
-Cloudhands Provider Interface package - ElementTree utilities
+Cloudhands Provider Interface package - module for handling networking 
+functionality
 """
 __author__ = "P J Kershaw"
 __date__ = "24/03/14"
@@ -10,6 +11,7 @@ __revision__ = "$Id$"
 import logging
 import xml.etree.ElementTree as ET
 from libcloud.compute.providers import Provider, DRIVERS
+from libcloud.compute.drivers.vcloud import get_url_path, fixxpath
 
 import cloudhands.providers.utils.elementtree as et_utils
 
@@ -98,9 +100,34 @@ class EdgeGatewayRequestedResourcesInUseError(EdgeGatewayClientError):
     
 class EdgeGatewayClient(object):
     '''Retrieve, parse and update vCloud Edge Device configuration
+    
+    Edge Gateways provide organisational VDCs with routed connections to the 
+    outside
     ''' 
     VCD_API_VERS = '5.5'
     DEFAULT_PORT = 443
+           
+    # VDC Edge Gateway discovery related terms        
+    LINK_TAG = 'Link'
+    LINK_ATTR_TAG = 'href'
+    REL_ATTR_TAG = 'rel'
+    EDGE_GATEWAYS_LINK_REL = 'edgeGateways'
+    
+    EDGE_GATEWAY_REC_TAG = 'EdgeGatewayRecord'
+    
+    CONFIG_EDGE_GATEWAY_REL = 'edgeGateway:configureServices'
+    NAT_SERVICE_XPATH = ('Configuration/EdgeGatewayServiceConfiguration/'
+                         'NatService')
+    EDGE_GATEWAY_SERVICE_CONF_XPATH = \
+                        'Configuration/EdgeGatewayServiceConfiguration'
+             
+    # NAT rule configuration
+    NAT_RULE_TAG = 'NatRule'
+    NAT_RULE_TYPE_TAG = 'RuleType'
+    SRC_NAT_RULE_TYPE = 'SNAT'
+    DEST_NAT_RULE_TYPE = 'DNAT'
+    NAT_RULE_IS_ENABLED_TAG = 'IsEnabled'
+    NAT_RULE_ID_TAG = 'Id'
     
     def __init__(self):
         self.driver = None
@@ -118,7 +145,10 @@ class EdgeGatewayClient(object):
         
         return obj_     
               
-    def retrieve(self, vdc_id=None):
+    def retrieve_conf(self, vdc_id=None):
+        '''Retrieve configurations for each Edge Gateway in a given 
+        Organisational VDC
+        '''
         if vdc_id is not None:
             vdc_id_found = False
             for vdc in self.driver.vdcs:
@@ -130,24 +160,86 @@ class EdgeGatewayClient(object):
                 raise EdgeGatewayClientConfigError('No VDC found with requested'
                                                    ' id %r' % vdc_id)
         else:
+            # Default to the first ID found in the returned list
             vdc_id = self.driver.vdcs[0].id
             
         # Find out the Edge Gateway URIs for this VDC
-        edgegateway_uris = self._get_vdc_edgegateway_uris(vdc_id)
+        edgegateway_uris = self.get_vdc_edgegateway_uris(vdc_id)
         
-        # Resolve the first to retrieve the Edge Gateway Record
-        edgegateway_recs = self._get_edgegateway_rec(edgegateway_uris[0])
+        gateway_confs = []
+        for edgegateway_uri in edgegateway_uris:
+            # Resolve the first to retrieve the Edge Gateway Record
+            edgegateway_recs = self.get_edgegateway_recs(edgegateway_uri)
+            
+            # Resolve the Edge Gateway record link to get the Edge Gateway 
+            # information
+            gateway_conf = self._get_edgegateway_from_uri(
+                                                    edgegateway_recs[0].href)
+            gateway_confs.append(gateway_conf)
+            self._ns = et_utils.get_namespace(gateway._elem)
         
-        # Resolve the Edge Gateway record link to get the Edge Gateway 
-        # information
-        return self._get_edgegateway_from_uri(edgegateway_recs[0].href)
-      
+        return gateway_confs
+
+    def _get_elems(self, uri, xpath):
+        '''Helper method - Get XML elements from a given URI and XPath search 
+        over returned XML content
+        
+        :var uri: URI to retrieve XML response from
+        :var xpath: XPath to search returned XML content with.  It can contain
+        the {} delimited namespace or else the default vCloud one is assumed
+        :return: ElementTree Element contain search results
+        '''
+        res = self.driver.connection.request(get_url_path(uri))
+        if xpath.startswith(et_utils.NS_START_DELIM):
+            return res.object.findall(xpath)
+        else:
+            return res.object.findall(fixxpath(res.object, xpath))
+    
+    def get_vdc_edgegateway_uris(self, vdc_uri):
+        '''Get VDC Edge Gateway URIs for the Given VDC URI'''
+        edgegateway_uris = []
+        
+        for link in self._get_elems(vdc_uri, self.__class__.LINK_TAG):
+            rel_tag = link.get(self.__class__.REL_ATTR_TAG)
+            
+            if rel_tag == self.__class__.EDGE_GATEWAYS_LINK_REL:
+                edgegateway_uris.append(link.get(self.__class__.LINK_ATTR_TAG))
+                
+        return edgegateway_uris
+           
+    def get_edgegateway_recs(self, edgegateway_uri):
+        res = self.driver.connection.request(get_url_path(edgegateway_uri))
+        _log_etree_elem(res.object)
+
+        edgegateway_rec_elems = res.object.findall(
+            fixxpath(res.object, self.__class__.EDGE_GATEWAY_REC_TAG))
+        
+        edgegateway_recs = []
+        for edgegateway_rec_elem in edgegateway_rec_elems:
+            edgegateway_recs.append(et_utils.obj_from_elem_walker(
+                                                        edgegateway_rec_elem))
+                   
+        return edgegateway_recs
+    
+    def _get_edgegateway_from_uri(self, edgegateway_rec_uri):
+        res = self.driver.connection.request(get_url_path(edgegateway_rec_uri))
+        _log_etree_elem(res.object)
+        
+        gateway_iface_elems = res.object.findall(fixxpath(res.object, 
+                                                          "GatewayInterface"))
+        
+        gateway = et_utils.obj_from_elem_walker(res.object)
+        
+        # Augment gateway object with explicit reference to ElementTree elem
+        gateway._elem = res.object
+        
+        return gateway
+                  
     def _add_nat_rule(self, vdc, internal_ip, external_ip):
         '''Add a new NAT to map from an internal organisation address to an
         external host
         '''
         gateway = self.retrieve()
-        self._ns = et_utils.get_namespace(gateway._elem)
         
         log.debug('Current EdgeGateway configuration . . . ')
         _log_etree_elem(gateway._elem)
@@ -155,34 +247,21 @@ class EdgeGatewayClient(object):
         # Alter the gateway settings adding a new NAT entry
         
 #        self._update_edgegateway(gateway)
-        
-    def _update_edgegateway(self, gateway, iface_name, internal_ip, 
-                            external_ip):
-        '''Update Edge Gateway with settings provided'''
-        
-        # Find update endpoint
+
+    @classmethod
+    def _get_edgegateway_update_uri(cls, gateway):
+        '''Find update endpoint from returned gateway content
+        '''
         update_uri = None
         for link in gateway.link:
-            if link.rel == self.__class__.CONFIG_EDGE_GATEWAY_URI:
+            if link.rel == cls.CONFIG_EDGE_GATEWAY_REL:
                 update_uri = link.href
                 break
             
-        if update_uri is None:
-            raise EdgeGatewayResponseParseError('No Gateway update URI found '
-                                                'in Gateway response')
-        
-        # Get the update elements - the update interface expects a 
-        # <EdgeGatewayServiceConfiguration/> top-level element
-        gateway_service_conf_elem = gateway._elem.find(
-                    fixxpath(gateway._elem,
-                             self.__class__.EDGE_GATEWAY_SERVICE_CONF_XPATH))
-        if gateway_service_conf_elem is None:
-            raise EdgeGatewayResponseParseError(
-                    'No <EdgeGatewayServiceConfiguration/> element found '
-                    '<EdgeGateway/> settings returned from service')
-            
-        # Check allocation of external IPs
-        
+        return update_uri        
+
+    @staticmethod
+    def _get_edgegateway_iface_uri(gateway):
         # Get interface URI
         iface_uri = None
         for interface in \
@@ -190,7 +269,42 @@ class EdgeGatewayClient(object):
             if interface.name.value_ == iface_name:
                 iface_uri = interface.network.href
                 break
+        return iface_uri
             
+    @classmethod
+    def _get_gateway_service_conf_elem(cls, gateway):
+        '''Get Edge Gateway service configuration element section from parsed
+        Edge Gateway configuration
+        '''
+        
+        # Get the update elements - the update interface expects a 
+        # <EdgeGatewayServiceConfiguration/> top-level element
+        return gateway._elem.find(
+                fixxpath(gateway._elem,  cls.EDGE_GATEWAY_SERVICE_CONF_XPATH))
+    
+    def _update_edgegateway(self, gateway, iface_name, internal_ip, 
+                            external_ip):
+        '''Update Edge Gateway with settings provided'''
+        
+        update_uri = self.__class__._get_edgegateway_update_uri(gateway)
+        if update_uri is None:
+            raise EdgeGatewayResponseParseError('No Gateway update URI found '
+                                                'in Gateway response')
+         
+        # Edge Gateway service configuration is the element which needs to be 
+        # modified and POST'ed in order to make an update
+        gateway_service_conf_elem = \
+                        self.__class__._get_gateway_service_conf_elem(gateway)   
+        if gateway_service_conf_elem is None:
+            raise EdgeGatewayResponseParseError(
+                    'No <EdgeGatewayServiceConfiguration/> element found '
+                    '<EdgeGateway/> settings returned from service')
+
+            
+        # Check allocation of external IPs
+        
+
+        iface_uri = self.__class__._get_edgegateway_iface_uri(gateway)  
         if iface_uri is None:
             raise EdgeGatewayResponseParseError('Interface found with name %r' % 
                                                 iface_name)
@@ -233,7 +347,7 @@ class EdgeGatewayClient(object):
                                                 'found in returned Edge '
                                                 'Gateway configuration')
             
-        nat_service_elem.append(self._create_nat_rule_elem(snat_rule))
+        nat_service_elem.append(self.__class__._create_nat_rule_elem(snat_rule))
         
         # Destination NAT rule
         next_nat_rule_id += 1
@@ -245,7 +359,7 @@ class EdgeGatewayClient(object):
                             orig_ip=external_ip,
                             transl_ip=internal_ip)
                 
-        nat_service_elem.append(self._create_nat_rule_elem(dnat_rule))
+        nat_service_elem.append(self.__class__._create_nat_rule_elem(dnat_rule))
         
         _log_etree_elem(gateway._elem)
         
@@ -254,34 +368,30 @@ class EdgeGatewayClient(object):
         res = self.driver.connection.request(get_url_path(update_uri),
                                              method='POST',
                                              data=gateway_service_conf_xml)
-        self.assert_(res)
         _log_etree_elem(res.object)
 
-    NAT_RULE_TAG = 'NatRule'
-    NAT_RULE_TYPE_TAG = 'RuleType'
-    NAT_RULE_IS_ENABLED_TAG = 'IsEnabled'
-    NAT_RULE_ID_TAG = 'Id'
-    def _create_nat_rule_elem(self, nat_rule):   
+    @classmethod
+    def _create_nat_rule_elem(cls, nat_rule):   
         '''Create XML for a new NAT rule appending it to the NAT Service element
         '''                                                                       
         nat_rule_elem = ET.Element(
-                    et_utils.mk_tag(self._ns, self.__class__.NAT_RULE_TAG))
+                    et_utils.mk_tag(self._ns, cls.NAT_RULE_TAG))
         
         rule_type_elem = ET.SubElement(
                     nat_rule_elem, 
-                    et_utils.mk_tag(self._ns, self.__class__.NAT_RULE_TYPE_TAG))
+                    et_utils.mk_tag(self._ns, cls.NAT_RULE_TYPE_TAG))
         
         rule_type_elem.text = nat_rule.rule_type
         
         is_enabled_elem = ET.SubElement(
                 nat_rule_elem, 
-                et_utils.mk_tag(self._ns, self.__class__.NAT_RULE_IS_ENABLED))
+                et_utils.mk_tag(self._ns, cls.NAT_RULE_IS_ENABLED))
         
         is_enabled_elem.text = bool2str(nat_rule.rule_is_enabled)
         
         id_elem = ET.SubElement(
                 nat_rule_elem, 
-                et_utils.mk_tag(self._ns, self.__class__.NAT_RULE_ID_TAG)
+                et_utils.mk_tag(self._ns, cls.NAT_RULE_ID_TAG))
                 
         id_elem.text = str(nat_rule.rule_id)
         
@@ -341,58 +451,4 @@ class EdgeGatewayClient(object):
         protocol_elem.text = gateway_nat_rule.protocol
         
         return gateway_nat_rule_elem
-                   
-    LINK_TAG = 'Link'
-    LINK_ATTR_TAG = 'href'
-    REL_ATTR_TAG = 'rel'
-    EDGE_GATEWAYS_ATTR_VAL = 'edgeGateways'
-    
-    EDGE_GATEWAY_REC_TAG = 'EdgeGatewayRecord'
-    
-    def _get_vdc_edgegateway_uris(self, vdc_uri):
-        '''Get vDC Edge Gateway URIs'''
-        edgegateway_uris = []
-        for link in self._get_elems(vdc_uri, self.__class__.LINK_TAG):
-            if (link.get(self.__class__.REL_ATTR_TAG) == 
-                self.__class__.EDGE_GATEWAYS_ATTR_VAL):
-                edgegateway_uris.append(link.get(self.__class__.LINK_ATTR_TAG))
-                
-        return edgegateway_uris
 
-    def _get_elems(self, uri, xpath):
-        '''Helper method - Get XML elements from a given URI and XPath search 
-        over returned XML content
-        '''
-        res = self.driver.connection.request(get_url_path(uri))
-        if xpath.startswith('{'):
-            return res.object.findall(xpath)
-        else:
-            return res.object.findall(fixxpath(res.object, xpath))
-           
-    def _get_edgegateway_rec(self, edgegateway_uri):
-        res = self.driver.connection.request(get_url_path(edgegateway_uri))
-        _log_etree_elem(res.object)
-
-        edgegateway_rec_elems = res.object.findall(
-            fixxpath(res.object, self.__class__.EDGE_GATEWAY_REC_TAG))
-        
-        edgegateway_recs = []
-        for edgegateway_rec_elem in edgegateway_rec_elems:
-            edgegateway_recs.append(et_utils.obj_from_elem_walker(
-                                                        edgegateway_rec_elem))
-                   
-        return edgegateway_recs
-    
-    def _get_edgegateway_from_uri(self, edgegateway_rec_uri):
-        res = self.driver.connection.request(get_url_path(edgegateway_rec_uri))
-        _log_etree_elem(res.object)
-        
-        gateway_iface_elems = res.object.findall(fixxpath(res.object, 
-                                                          "GatewayInterface"))
-        
-        gateway = et_utils.obj_from_elem_walker(res.object)
-        
-        # Augment gateway object with explicit reference to ElementTree elem
-        gateway._elem = res.object
-        
-        return gateway

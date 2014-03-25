@@ -10,18 +10,22 @@ __revision__ = "$Id$"
 from cloudhands.provider import utils
 
 
+NS_START_DELIM = '{'
+NS_END_DELIM = '}'
+
 # Take away ElementTree added namespace from a tag and return the tag name alone
-strip_ns_from_tag = lambda tagname: tagname.rsplit('}')[-1]
+strip_ns_from_tag = lambda tagname: tagname.rsplit(NS_END_DELIM)[-1]
 
 # Given an ElementTree element instance, return the tag name minus its namespace
 # prefix 
 get_tagname = lambda elem: strip_ns_from_tag(elem.tag)
 
 # Return the namespace for a given ElementTree Element
-get_namespace = lambda elem: elem.tag[1:].split("}", 1)[0]
+get_namespace = lambda elem: elem.tag[1:].split(NS_END_DELIM, 1)[0]
 
 # Given a namespace and tag name make an ElementTree style tag
-mk_tag = lambda namespace, tagname: "{%s}%s" % (namespace, tagname)
+mk_tag = lambda namespace, tagname: "%s%s%s%s" % (NS_START_DELIM, namespace, 
+                                                  NS_END_DELIM, tagname)
 
 
 CLASS_NAME_SUFFIX = '_'
