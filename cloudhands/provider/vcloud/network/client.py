@@ -10,10 +10,10 @@ __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
 import logging
 import xml.etree.ElementTree as ET
-from libcloud.compute.providers import Provider, DRIVERS
+from libcloud.compute.providers import Provider, DRIVERS, get_driver
 from libcloud.compute.drivers.vcloud import get_url_path, fixxpath
 
-import cloudhands.providers.utils.elementtree as et_utils
+import cloudhands.provider.utils.elementtree as et_utils
 
 # TODO: Fix location
 DRIVERS[Provider.VCLOUD] = (

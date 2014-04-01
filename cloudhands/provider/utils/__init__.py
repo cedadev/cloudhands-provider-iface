@@ -12,6 +12,7 @@ __revision__ = "$Id$"
 is_bool = lambda val: val.lower() in ('true', 'false')
 bool2str = lambda val: str(val).lower()
 
+
 def infer_type_from_str(val):
     '''Attempt to convert a string to its correct equivalent type by checking
     its content.
