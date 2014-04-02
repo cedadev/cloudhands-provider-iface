@@ -149,9 +149,9 @@ class EdgeGatewayClient(object):
         '''Instantiate from a connection made to the vCD API'''
         obj_ = cls(**kwarg)
         
-        driver = get_driver(Provider.VCLOUD)
-        self.driver = driver(username, password, host=hostname,
-                             api_version=api_version, port=port)
+        driver_cls = get_driver(Provider.VCLOUD)
+        obj_.driver = driver_cls(username, password, host=hostname,
+                                 api_version=api_version, port=port)
         
         return obj_     
               
@@ -186,7 +186,7 @@ class EdgeGatewayClient(object):
             edgegateway_conf = self._get_edgegateway_from_uri(
                                                     edgegateway_recs[0].href)
             edgegateway_confs.append(edgegateway_conf)
-            self._ns = et_utils.get_namespace(gateway._elem)
+            self._ns = et_utils.get_namespace(edgegateway_conf._elem)
         
         return edgegateway_confs
 

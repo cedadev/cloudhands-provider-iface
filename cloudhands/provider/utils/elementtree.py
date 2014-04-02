@@ -57,7 +57,7 @@ def obj_from_elem_walker(elem):
         # Make a valid variable name from XML attribute name -
         # et_get_tagname() call strips out ElementTree namespace specifier
         # where needed
-        varname = mk_valid_varname(strip_ns_from_tag(attrname))
+        varname = utils.mk_valid_varname(strip_ns_from_tag(attrname))
         if varname is not None:
             setattr(_obj, varname, utils.infer_type_from_str(attrval))
     
@@ -77,7 +77,7 @@ def obj_from_elem_walker(elem):
             # More than one XML child element of the same name is present
             
             # Create a Python variable name for it
-            varname = camelcase2underscores(get_tagname(child_elem))
+            varname = utils.camelcase2underscores(get_tagname(child_elem))
             
             # Check to see if the current object already has an attribute
             # with this name
@@ -94,7 +94,7 @@ def obj_from_elem_walker(elem):
         else:
             # Only one XML child element exists with this name
             setattr(_obj, 
-                    camelcase2underscores(get_tagname(child_elem)), 
+                    utils.camelcase2underscores(get_tagname(child_elem)), 
                     obj_from_elem_walker(child_elem))
         
     return _obj 
