@@ -26,7 +26,7 @@ CONFIG_DIR = path.join(HERE_DIR, 'config')
 
 # CA Certificates bundle for securing the connection to the server.  This is a
 # concatenated set of PEM-format CA certificates.  Nb. server authentication is
-# disabled in the test environment as the test server is using a selg-signed 
+# disabled in the test environment as the test server is using a self-signed 
 # certificate
 CA_CERTS_PATH = path.join(CONFIG_DIR, 'ca', 'v55-ca-bundle.crt')
 
@@ -61,6 +61,15 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
     def test01_retrieve_conf(self):
         edgegateway_confs = self.edgegateway_clnt.retrieve_conf()
         self.assert_(edgegateway_confs)
+        
+    def test02_(self):
+        edgegateway_confs = self.edgegateway_clnt.retrieve_conf()
+        
+        self.edgegateway_clnt.configure_routing(edgegateway_confs[0],
+                                                iface_name,
+                                                internal_ip,
+                                                external_ip)
+        
     
               
 if __name__ == "__main__":
