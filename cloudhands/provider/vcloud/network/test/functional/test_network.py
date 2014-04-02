@@ -58,8 +58,9 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
                                                  self.__class__.PASSWORD, 
                                                  self.__class__.CLOUD_HOSTNAME)
         
-    def test01(self):
-        self.assert_(self.edgegateway_clnt)
+    def test01_retrieve_conf(self):
+        edgegateway_confs = self.edgegateway_clnt.retrieve_conf()
+        self.assert_(edgegateway_confs)
     
               
 if __name__ == "__main__":

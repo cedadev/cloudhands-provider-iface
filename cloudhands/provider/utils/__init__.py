@@ -8,6 +8,9 @@ __date__ = "24/03/14"
 __copyright__ = "(C) 2014 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
+import keyword
+import re
+
 
 is_bool = lambda val: val.lower() in ('true', 'false')
 bool2str = lambda val: str(val).lower()
