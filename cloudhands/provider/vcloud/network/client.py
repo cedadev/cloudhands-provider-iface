@@ -10,6 +10,8 @@ __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
 import logging
 import xml.etree.ElementTree as ET
+
+import iptools
 from libcloud.compute.providers import Provider, DRIVERS, get_driver
 from libcloud.compute.drivers.vcloud import get_url_path, fixxpath
 
@@ -105,7 +107,16 @@ class EdgeGatewayClient(object):
     
     Edge Gateways provide organisational VDCs with routed connections to the 
     outside
+    :cvar CFG_FILE_SECTION_NAME: section in config file to read parameters from
+    - applies to from_config_file classmethod only
     ''' 
+    CFG_FILE_MK_CON = 'EdgeGatewayClient'
+    CFG_FILE_ROUTE_HOST = 'EdgeGatewayClient.route_host'
+    CFG_FILE_SECTION_NAMES = (
+        CFG_FILE_MK_CON,
+        CFG_FILE_ROUTE_HOST
+    ) 
+
     VCD_API_VERS = '5.5'
     DEFAULT_PORT = 443
            
@@ -156,10 +167,59 @@ class EdgeGatewayClient(object):
                                  api_version=api_version, port=port)
         
         return obj_     
-              
-    def retrieve_conf(self, vdc_id=None):
+           
+    @classmethod
+    def from_config_file(cls, cfg_filepath):
+        '''Instantiate from settings in a configuration file
+        '''
+        settings = cls.parse_config_file(cfg_filepath, 
+                                         section_names=[cls.CFG_FILE_MK_CON])
+        
+        con_settings = settings[cls.CFG_FILE_MK_CON]
+        
+        obj_ = cls.from_connection(con_settings.pop('username'), 
+                                   con_settings.pop('password'), 
+                                   con_settings.pop('hostname'), 
+                                   **con_settings)
+        
+        return obj_
+        
+    @classmethod
+    def parse_config_file(cls, cfg_filepath, section_names=None):
+        '''Get settings needed for initialising the vCD driver from a config
+        file
+        '''
+        cfg = utils.CaseSensitiveConfigParser()
+        cfg.read(cfg_filepath)
+        
+        if section_names is None:
+            section_names = cfg.sections()
+            
+        settings = {}
+        for section_name in section_names:
+            if section_name == cls.CFG_FILE_MK_CON:
+                settings[section_name] = {
+                    'username':  cfg.get(section_name, 'username'),
+                    'password':  cfg.get(section_name, 'password'),
+                    'hostname':  cfg.get(section_name, 'hostname'),
+                    'port':  cfg.getint(section_name, 'port'),
+                    'api_version':  cfg.get(section_name, 'api_version'),
+                }
+            elif section_name == cls.CFG_FILE_ROUTE_HOST:
+                settings[section_name] = {
+                    'iface_name': cfg.get(section_name, 'iface_name'),
+                    'internal_ip': cfg.get(section_name, 'internal_ip'),
+                    'external_ip': cfg.get(section_name, 'external_ip'),
+                }
+        
+        return settings
+        
+    def retrieve_edgegateway_config(self, vdc_id=None, names=None):
         '''Retrieve configurations for each Edge Gateway in a given 
         Organisational VDC
+        
+        :param names: names of the Edge Gateway configurations to retrieve. If
+        none given, retrieve all the ones found
         '''
         if vdc_id is not None:
             vdc_id_found = False
@@ -176,21 +236,25 @@ class EdgeGatewayClient(object):
             vdc_id = self.driver.vdcs[0].id
             
         # Find out the Edge Gateway URIs for this VDC
-        edgegateway_uris = self.get_vdc_edgegateway_uris(vdc_id)
+        edgegateway_uri = self.get_vdc_edgegateways_uri(vdc_id)
         
-        edgegateway_confs = []
-        for edgegateway_uri in edgegateway_uris:
-            # Resolve the first to retrieve the Edge Gateway Record
-            edgegateway_recs = self.get_edgegateway_recs(edgegateway_uri)
-            
-            # Resolve the Edge Gateway record link to get the Edge Gateway 
-            # information
-            edgegateway_conf = self._get_edgegateway_from_uri(
-                                                    edgegateway_recs[0].href)
-            edgegateway_confs.append(edgegateway_conf)
-            self._ns = et_utils.get_namespace(edgegateway_conf._elem)
+        # Resolve to retrieve the Edge Gateway Records
+        edgegateway_recs = self.get_edgegateway_recs(edgegateway_uri)
         
-        return edgegateway_confs
+        edgegateway_configs = []
+        if names is None:
+            edgegateway_configs = [self._get_edgegateway_from_uri(
+                                                    edgegateway_rec.href)
+                                   for edgegateway_rec in edgegateway_recs]
+        else:
+            edgegateway_configs = [self._get_edgegateway_from_uri(
+                                                    edgegateway_rec.href)
+                                   for edgegateway_rec in edgegateway_recs 
+                                   if edgegateway_rec.name in names]
+
+        self._ns = et_utils.get_namespace(edgegateway_configs[0]._elem)
+        
+        return edgegateway_configs
 
     def _get_elems(self, uri, xpath):
         '''Helper method - Get XML elements from a given URI and XPath search 
@@ -202,22 +266,19 @@ class EdgeGatewayClient(object):
         :return: ElementTree Element contain search results
         '''
         res = self.driver.connection.request(get_url_path(uri))
+        _log_etree_elem(res.object)
         if xpath.startswith(et_utils.NS_START_DELIM):
             return res.object.findall(xpath)
         else:
             return res.object.findall(fixxpath(res.object, xpath))
     
-    def get_vdc_edgegateway_uris(self, vdc_uri):
-        '''Get VDC Edge Gateway URIs for the Given VDC URI'''
-        edgegateway_uris = []
-        
+    def get_vdc_edgegateways_uri(self, vdc_uri):
+        '''Get VDC Edge Gateways query URI for the Given VDC URI'''
         for link in self._get_elems(vdc_uri, self.__class__.LINK_TAG):
             rel_tag = link.get(self.__class__.REL_ATTR_TAG)
             
             if rel_tag == self.__class__.EDGE_GATEWAYS_LINK_REL:
-                edgegateway_uris.append(link.get(self.__class__.LINK_ATTR_TAG))
-                
-        return edgegateway_uris
+                return link.get(self.__class__.LINK_ATTR_TAG)
            
     def get_edgegateway_recs(self, edgegateway_uri):
         res = self.driver.connection.request(get_url_path(edgegateway_uri))
@@ -226,10 +287,8 @@ class EdgeGatewayClient(object):
         edgegateway_rec_elems = res.object.findall(
             fixxpath(res.object, self.__class__.EDGE_GATEWAY_REC_TAG))
         
-        edgegateway_recs = []
-        for edgegateway_rec_elem in edgegateway_rec_elems:
-            edgegateway_recs.append(et_utils.obj_from_elem_walker(
-                                                        edgegateway_rec_elem))
+        edgegateway_recs = [et_utils.obj_from_elem_walker(edgegateway_rec_elem)
+                            for edgegateway_rec_elem in edgegateway_rec_elems]
                    
         return edgegateway_recs
     
@@ -297,7 +356,7 @@ class EdgeGatewayClient(object):
                 fixxpath(gateway._elem, cls.EDGE_GATEWAY_SERVICE_CONF_XPATH))
     
     @classmethod
-    def configure_routing(cls, gateway, iface_name, internal_ip, external_ip):
+    def route_host(cls, gateway, iface_name, internal_ip, external_ip):
         '''Update Edge Gateway with new routing of internal to external IP
         '''
         # Get the Edge Gateway update endpoint
@@ -315,10 +374,27 @@ class EdgeGatewayClient(object):
                     '<EdgeGateway/> settings returned from service')
 
             
-        # Check allocation of external IPs
-        
+        # Check allocation of external IPs - query allowed range
+        gateway_ifaces = \
+                    gateway.configuration.gateway_interfaces.gateway_interface
+        for gateway_iface in gateway_ifaces:
+            if gateway_iface.name.value_ == iface_name:
+                ip_ranges = gateway_iface.subnet_participation.ip_ranges
+                
+                # Allow for parse finding just one entry and allocating a scalar
+                if len(ip_ranges.ip_range) == 1:
+                    ip_range = [ip_range]
+                
+                for i in ip_range:
+                    range = iptools.IpRange(i.start_address.value_,
+                                            i.end_address.value_)
+                    if external_ip not in range:
+                        raise EdgeGatewayClientConfigError('Requested external '
+                                                           'IP %r is outside '
+                                                           'available range '
+                                                           '%r' % range)
 
-        iface_uri = cls._get_edgegateway_iface_uri(gateway, iface_name)  
+        iface_uri = cls._get_edgegateway_iface_uri(gateway, iface_name)
         if iface_uri is None:
             raise EdgeGatewayResponseParseError('Interface found with name %r' % 
                                                 iface_name)
@@ -332,7 +408,7 @@ class EdgeGatewayClient(object):
             if nat_rule.id.value_ > highest_nat_rule_id:
                 highest_nat_rule_id = nat_rule.id.value_
                 
-        next_nat_rule_id = highest_nat_rule_id + 1
+        next_nat_rule_id = highest_nat_rule_id + 1 # may be able to omit
 
         # Check external IP is not already used in an existing rule
         # TODO: should this necessarily be a fatal error?
