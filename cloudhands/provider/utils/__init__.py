@@ -10,6 +10,7 @@ __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
 import keyword
 import re
+from ConfigParser import SafeConfigParser
 
 
 is_bool = lambda val: val.lower() in ('true', 'false')
@@ -72,3 +73,13 @@ def camelcase2underscores(varname):
     '''
     to_underscores_name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', varname)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', to_underscores_name).lower()
+
+
+class CaseSensitiveConfigParser(SafeConfigParser):
+    '''
+    Subclass the SafeConfigParser - to preserve the original string case of the
+    cfg section names - NB, the RawConfigParser default is to lowercase these 
+    by default
+    '''
+    def optionxform(self, optionstr):
+        return optionstr

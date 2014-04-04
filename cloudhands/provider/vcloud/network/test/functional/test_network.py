@@ -8,7 +8,7 @@ __date__ = "01/04/14"
 __copyright__ = "(C) 2014 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
-from os import path
+from os import path, getenv
 import unittest
 import logging
 
@@ -30,13 +30,6 @@ CONFIG_DIR = path.join(HERE_DIR, 'config')
 # certificate
 CA_CERTS_PATH = path.join(CONFIG_DIR, 'ca', 'v55-ca-bundle.crt')
 
-# File containing the authentication credentials.  It should be of the form
-# <vCloud id>@<vCloud Org Name>:<password>
-CREDS_FILEPATH = path.join(CONFIG_DIR, 'v55creds.txt')
-
-# File containing the hostname for the vCloud Director API endpoint.  Simply
-# place the FQDN on a single line and save the file.
-CLOUD_HOSTNAME_FILEPATH = path.join(CONFIG_DIR, 'v55cloud-host.txt')
            
 log = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
@@ -44,31 +37,60 @@ logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
  
 class EdgeGatewayClientTestCase(unittest.TestCase):
     '''Test Edge Gateway client network configuration 
-    '''
-    USERNAME, PASSWORD = open(CREDS_FILEPATH).read().strip().split(':')
-    CLOUD_HOSTNAME = open(CLOUD_HOSTNAME_FILEPATH).read().strip()
+    '''    
+    CFG_FILEPATH = (getenv('EDGE_GATEWAY_CLNT_TEST_CFG_FILEPATH') or 
+                    path.join(CONFIG_DIR, 'edgegateway_clnt.cfg'))
     
     # Disable SSL verification for testing ONLY
 #    security.CA_CERTS_PATH = [CA_CERTS_PATH]
     security.VERIFY_SSL_CERT = False
     
-    def setUp(self):
-        self.edgegateway_clnt = EdgeGatewayClient.from_connection(
-                                                 self.__class__.USERNAME, 
-                                                 self.__class__.PASSWORD, 
-                                                 self.__class__.CLOUD_HOSTNAME)
+    def __init__(self, *arg, **kwarg):
+        super(EdgeGatewayClientTestCase, self).__init__(*arg, **kwarg)
         
-    def test01_retrieve_conf(self):
-        edgegateway_confs = self.edgegateway_clnt.retrieve_conf()
+    def setUp(self):
+        settings = EdgeGatewayClient.parse_config_file(
+                        self.__class__.CFG_FILEPATH,
+                        section_names=[EdgeGatewayClient.CFG_FILE_MK_CON])
+        
+        con_settings = settings[EdgeGatewayClient.CFG_FILE_MK_CON]
+        self.edgegateway_clnt = EdgeGatewayClient.from_connection(
+                                                 con_settings['username'], 
+                                                 con_settings['password'], 
+                                                 con_settings['hostname'])
+        
+    
+    def test01_read_config_file(self):
+        settings = EdgeGatewayClient.parse_config_file(
+                                                self.__class__.CFG_FILEPATH)
+        for section_name in settings.keys():
+            for i, param in enumerate(settings[section_name]):
+                self.assert_(param, 'Missing param %r for section %r' % 
+                             (i, section_name))
+        
+    def test02_instantiate_from_config_file_settings(self):
+        edgegateway_clnt = EdgeGatewayClient.from_config_file(
+                                                    self.__class__.CFG_FILEPATH) 
+        self.assert_(edgegateway_clnt)
+        
+    def test03_retrieve_edgegateway_config(self):
+        edgegateway_confs = self.edgegateway_clnt.retrieve_edgegateway_config()
         self.assert_(edgegateway_confs)
         
-    def test02_(self):
-        edgegateway_confs = self.edgegateway_clnt.retrieve_conf()
+    def test04_(self):
+        edgegateway_confs = self.edgegateway_clnt.retrieve_edgegateway_config()
         
-        self.edgegateway_clnt.configure_routing(edgegateway_confs[0],
-                                                iface_name,
-                                                internal_ip,
-                                                external_ip)
+        settings = EdgeGatewayClient.parse_config_file(
+                        self.__class__.CFG_FILEPATH,
+                        section_names=[EdgeGatewayClient.CFG_FILE_ROUTE_HOST])
+        
+        inputs = settings[EdgeGatewayClient.CFG_FILE_ROUTE_HOST]
+        
+        self.edgegateway_clnt.route_host(edgegateway_confs[0],
+                                         inputs['iface_name'],
+                                         inputs['internal_ip'],
+                                         inputs['external_ip'])
+        
         
     
               
