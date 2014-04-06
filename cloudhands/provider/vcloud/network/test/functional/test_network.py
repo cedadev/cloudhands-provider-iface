@@ -38,8 +38,8 @@ logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
 class EdgeGatewayClientTestCase(unittest.TestCase):
     '''Test Edge Gateway client network configuration 
     '''    
-    CFG_FILEPATH = (getenv('EDGE_GATEWAY_CLNT_TEST_CFG_FILEPATH') or 
-                    path.join(CONFIG_DIR, 'edgegateway_clnt.cfg'))
+    SETTINGS_FILEPATH = (getenv('EDGE_GATEWAY_CLNT_TEST_CFG_FILEPATH') or 
+                         path.join(CONFIG_DIR, 'edgegateway_clnt.cfg'))
     
     # Disable SSL verification for testing ONLY
 #    security.CA_CERTS_PATH = [CA_CERTS_PATH]
@@ -49,42 +49,42 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
         super(EdgeGatewayClientTestCase, self).__init__(*arg, **kwarg)
         
     def setUp(self):
-        settings = EdgeGatewayClient.parse_config_file(
-                        self.__class__.CFG_FILEPATH,
-                        section_names=[EdgeGatewayClient.CFG_FILE_MK_CON])
+        settings = EdgeGatewayClient.parse_settings_file(
+                        self.__class__.SETTINGS_FILEPATH,
+                        section_names=[EdgeGatewayClient.SETTINGS_FILE_MK_CON])
         
-        con_settings = settings[EdgeGatewayClient.CFG_FILE_MK_CON]
+        con_settings = settings[EdgeGatewayClient.SETTINGS_FILE_MK_CON]
         self.edgegateway_clnt = EdgeGatewayClient.from_connection(
                                                  con_settings['username'], 
                                                  con_settings['password'], 
                                                  con_settings['hostname'])
         
     
-    def test01_read_config_file(self):
-        settings = EdgeGatewayClient.parse_config_file(
-                                                self.__class__.CFG_FILEPATH)
+    def test01_read_settings_file(self):
+        settings = EdgeGatewayClient.parse_settings_file(
+                                            self.__class__.SETTINGS_FILEPATH)
         for section_name in settings.keys():
             for i, param in enumerate(settings[section_name]):
                 self.assert_(param, 'Missing param %r for section %r' % 
                              (i, section_name))
         
-    def test02_instantiate_from_config_file_settings(self):
-        edgegateway_clnt = EdgeGatewayClient.from_config_file(
-                                                    self.__class__.CFG_FILEPATH) 
+    def test02_instantiate_from_settings_file(self):
+        edgegateway_clnt = EdgeGatewayClient.from_settings_file(
+                                            self.__class__.SETTINGS_FILEPATH) 
         self.assert_(edgegateway_clnt)
         
-    def test03_get_edgegateway_config(self):
-        edgegateway_confs = self.edgegateway_clnt.get_edgegateway_config()
+    def test03_get_config(self):
+        edgegateway_confs = self.edgegateway_clnt.get_config()
         self.assert_(edgegateway_confs)
         
     def test04_route_host(self):
-        edgegateway_confs = self.edgegateway_clnt.retrieve_edgegateway_config()
+        edgegateway_confs = self.edgegateway_clnt.get_config()
         
-        settings = EdgeGatewayClient.parse_config_file(
-                        self.__class__.CFG_FILEPATH,
-                        section_names=[EdgeGatewayClient.CFG_FILE_ROUTE_HOST])
+        settings = EdgeGatewayClient.parse_settings_file(
+                    self.__class__.SETTINGS_FILEPATH,
+                    section_names=[EdgeGatewayClient.SETTINGS_FILE_ROUTE_HOST])
         
-        inputs = settings[EdgeGatewayClient.CFG_FILE_ROUTE_HOST]
+        inputs = settings[EdgeGatewayClient.SETTINGS_FILE_ROUTE_HOST]
         
         self.edgegateway_clnt.route_host(edgegateway_confs[0],
                                          inputs['iface_name'],
