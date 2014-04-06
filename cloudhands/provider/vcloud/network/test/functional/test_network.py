@@ -73,11 +73,11 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
                                                     self.__class__.CFG_FILEPATH) 
         self.assert_(edgegateway_clnt)
         
-    def test03_retrieve_edgegateway_config(self):
-        edgegateway_confs = self.edgegateway_clnt.retrieve_edgegateway_config()
+    def test03_get_edgegateway_config(self):
+        edgegateway_confs = self.edgegateway_clnt.get_edgegateway_config()
         self.assert_(edgegateway_confs)
         
-    def test04_(self):
+    def test04_route_host(self):
         edgegateway_confs = self.edgegateway_clnt.retrieve_edgegateway_config()
         
         settings = EdgeGatewayClient.parse_config_file(
@@ -90,7 +90,9 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
                                          inputs['iface_name'],
                                          inputs['internal_ip'],
                                          inputs['external_ip'])
-        
+
+    def test05_remove_nat_rule(self):
+        self.
         
     
               
