@@ -215,7 +215,7 @@ class EdgeGatewayClient(object):
         
         return settings
         
-    def get_edgegateway_config(self, vdc_id=None, names=None):
+    def get_config(self, vdc_id=None, names=None):
         '''Retrieve configurations for each Edge Gateway in a given 
         Organisational VDC
         
@@ -256,6 +256,28 @@ class EdgeGatewayClient(object):
         self._ns = et_utils.get_namespace(edgegateway_configs[0]._elem)
         
         return edgegateway_configs
+
+    def post_config(self, gateway_config):
+        '''Despatch updated configuration
+        
+        :param gateway_config: new configuration to posted to the Edge Gateway
+        '''
+        update_uri = self._get_edgegateway_update_uri(gateway_config)
+        
+        # Get the update elements - the update interface expects a 
+        # <EdgeGatewayServiceConfiguration/> top-level element
+        gateway_service_conf_elem = gateway_config._elem.find(
+                    fixxpath(gateway_config._elem,
+                             self.__class__.EDGE_GATEWAY_SERVICE_CONF_XPATH))
+        if gateway_service_conf_elem is None:
+            raise EdgeGatewayClientConfigError(
+                    'No <EdgeGatewayServiceConfiguration/> element found '
+                    '<EdgeGateway/> settings returned from service')
+            
+        gateway_service_conf_xml = ET.tostring(gateway_service_conf_elem)
+        res = self.driver.connection.request(get_url_path(update_uri),
+                                             method='POST',
+                                             data=gateway_service_conf_xml)
 
     def _get_elems(self, uri, xpath):
         '''Helper method - Get XML elements from a given URI and XPath search 
