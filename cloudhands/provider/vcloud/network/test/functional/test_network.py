@@ -106,6 +106,9 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
         
         self.edgegateway_clnt.post_config(edgegateway_config)
         
+        res = self.edgegateway_clnt.post_config(edgegateway_config)
+        
+        self.assert_(res)
 
     def test05_remove_nat_rules(self):
         edgegateway_configs = self.edgegateway_clnt.get_config(
@@ -118,6 +121,9 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
 
         EdgeGatewayClient.remove_nat_rules(edgegateway_config, nat_rule_ids)
         
+        res = self.edgegateway_clnt.post_config(edgegateway_config)
+        
+        self.assert_(res)
     
               
 if __name__ == "__main__":
