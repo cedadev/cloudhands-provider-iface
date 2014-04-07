@@ -283,6 +283,9 @@ class EdgeGatewayClient(object):
         res = self.driver.connection.request(get_url_path(update_uri),
                                              method='POST',
                                              data=gateway_service_config_xml)
+        if res.status < 200 or res.status >= 300:
+            log.error('Error sending Edge Gateway configuration to %r: %r:',
+                      update_uri, ET.tostring(res.object))
         
         return res
 
@@ -454,16 +457,6 @@ class EdgeGatewayClient(object):
                             iface_name=iface_name,
                             orig_ip=internal_ip,
                             transl_ip=external_ip)
-
-       
-        nat_service_elem = gateway._elem.find(
-                    fixxpath(gateway._elem, cls.NAT_SERVICE_XPATH))
-        if nat_service_elem is None:
-            raise EdgeGatewayResponseParseError('No <NatService/> element '
-                                                'found in returned Edge '
-                                                'Gateway configuration')
-            
-        nat_service_elem.append(cls._create_nat_rule_elem(snat_rule))
         
         # Destination NAT rule
         next_nat_rule_id += 1
@@ -474,26 +467,29 @@ class EdgeGatewayClient(object):
                             iface_name=iface_name,
                             orig_ip=external_ip,
                             transl_ip=internal_ip)
-                
-        nat_service_elem.append(cls._create_nat_rule_elem(dnat_rule))
+        
+        cls.add_nat_rules(gateway, [snat_rule, dnat_rule])
         
         _log_etree_elem(gateway._elem)
     
     @classmethod
-    def _add_nat_rule_elem(cls, gateway, nat_rule):
+    def add_nat_rules(cls, gateway, nat_rules):
         '''Add new NAT rule to Edge Gateway Configuration ElementTree
         
         :param gateway: gateway object contains _elem attribute which is the
         root of the Gateway Configuration ElementTree
         '''
-        nat_service_elem = gateway._elem.find(
-                                fixxpath(gateway._elem, cls.NAT_SERVICE_XPATH))
-        if nat_service_elem is None:
-            raise EdgeGatewayResponseParseError('No <NatService/> element '
-                                                'found in returned Edge '
-                                                'Gateway configuration')
+        nat_service = gateway.configuration.\
+            edge_gateway_service_configuration.nat_service
+        
+        # Input Gateway may have not had any NAT rules allocated to it 
+        # previously
+        if not hasattr(nat_service, 'nat_rule'):
+            nat_service.nat_rule = []
             
-        nat_service_elem.append(cls._create_nat_rule_elem(nat_rule))
+        for nat_rule in nat_rules:
+            nat_service._elem.append(cls._create_nat_rule_elem(nat_rule))
+            nat_service.nat_rule.append(nat_rule)
     
     @classmethod
     def remove_nat_rules(cls, gateway, nat_rule_ids):
@@ -504,13 +500,6 @@ class EdgeGatewayClient(object):
         root of the Gateway Configuration ElementTree
         :param nat_rule_id: identifier for rule to be removed
         '''
-#        nat_service_elem = gateway._elem.find(
-#                                fixxpath(gateway._elem, cls.NAT_SERVICE_XPATH))
-#        if nat_service_elem is None:
-#            raise EdgeGatewayResponseParseError('No <NatService/> element '
-#                                                'found in returned Edge '
-#                                                'Gateway configuration')
-            
         nat_service = gateway.configuration.\
             edge_gateway_service_configuration.nat_service
             
@@ -536,7 +525,7 @@ class EdgeGatewayClient(object):
         ]
         _log_etree_elem(gateway._elem)
 
-    def _create_nat_rule_elem(self, nat_rule):   
+    def _create_nat_rule_elem(self, nat_rule, ns=None):   
         '''Create XML for a new NAT rule appending it to the NAT Service element
         '''            
         cls = self.__class__
