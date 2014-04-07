@@ -51,6 +51,9 @@ def obj_from_elem_walker(elem):
     _cls = type(get_tagname(elem) + CLASS_NAME_SUFFIX, (object,), {})
     _obj = _cls()
     
+    # Take a reference to the ElementTree object
+    _obj._elem = elem
+    
     # Add the XML element's attributes as attributes of the new Python
     # object
     for attrname, attrval in elem.attrib.items():
@@ -66,7 +69,9 @@ def obj_from_elem_walker(elem):
     if elem.text is not None:
         elem_text = elem.text.strip()
         if elem_text:
-            setattr(_obj, XML_ELEM_VARNAME, utils.infer_type_from_str(elem_text))
+            setattr(_obj, 
+                    XML_ELEM_VARNAME, 
+                    utils.infer_type_from_str(elem_text))
         
     # Go to the next levels in XML hierarchy recursively adding further
     # child objects to _obj
