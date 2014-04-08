@@ -84,7 +84,116 @@ class NatRule(object):
 
         self._rule_type = val
 
+         
+class ETreeNatRule(object):  
+    '''Class for creating XML serialisation of NAT Rule using ElementTree'''      
 
+    VCD_XML_NS = et_utils.VCD_XML_NS
+
+    TAG = 'NatRule'
+    TYPE_TAG = 'RuleType'
+    SRC_RULE_TYPE = 'SNAT'
+    DEST_RULE_TYPE = 'DNAT'
+    IS_ENABLED_TAG = 'IsEnabled'
+    ID_TAG = 'Id'
+
+    def __init__(self, ns=VCD_XML_NS):
+        self._ns = ns
+        
+    def create_elem(self, nat_rule, ns=VCD_XML_NS):   
+        '''Create XML for a new NAT rule appending it to the NAT Service element
+        '''            
+        cls = self.__class__
+                                                                   
+        nat_rule_elem = ET.Element(et_utils.mk_tag(ns, cls.TAG))
+        
+        rule_type_elem = ET.SubElement(nat_rule_elem, 
+                                       et_utils.mk_tag(ns, cls.TYPE_TAG))
+        
+        rule_type_elem.text = nat_rule.rule_type
+        
+        is_enabled_elem = ET.SubElement(nat_rule_elem, 
+                                        et_utils.mk_tag(ns, cls.IS_ENABLED_TAG))
+        
+        is_enabled_elem.text = utils.bool2str(nat_rule.rule_is_enabled)
+        
+        id_elem = ET.SubElement(nat_rule_elem, 
+                                et_utils.mk_tag(ns, cls.ID_TAG))
+                
+        id_elem.text = str(nat_rule.rule_id)
+        
+        
+        gateway_nat_rule_elem = ETreeGatewayNatRule(ns=ns).create_elem(
+                                                    nat_rule.gateway_nat_rule)
+        
+        nat_rule_elem.append(gateway_nat_rule_elem)
+        
+        return nat_rule_elem
+    
+
+class ETreeGatewayNatRule(object):
+    '''Class for creating XML serialisation of Gateway NAT Rule using
+    ElementTree
+    '''
+    VCD_XML_NS = et_utils.VCD_XML_NS
+            
+    TAG = 'GatewayNatRule'
+    
+    ORIGINAL_IP_TAG = 'OriginalIp'
+    ORIGINAL_PORT_TAG = 'OriginalPort'
+    TRANSLATED_IP_TAG = 'TranslatedIp'
+    TRANSLATED_PORT_TAG = 'TranslatedPort'
+    PROTOCOL_TAG = 'Protocol'
+
+    def __init__(self, ns=VCD_XML_NS):
+        self._ns = ns
+        
+    def create_elem(self, gateway_nat_rule):
+        '''Make a NAT Rule gateway interface XML element
+        '''
+        gateway_nat_rule_elem = ET.Element(
+                        et_utils.mk_tag(self._ns, self.__class__.TAG))
+        
+        ET.SubElement(gateway_nat_rule_elem,
+                      et_utils.mk_tag(self._ns, 'Interface'),
+                      attrib={
+                         'href': gateway_nat_rule.iface_uri,
+                         'name': gateway_nat_rule.iface_name,
+                         'type': gateway_nat_rule.iface_uri_type
+                      })
+        orig_ip_elem = ET.SubElement(
+                 gateway_nat_rule_elem, 
+                 et_utils.mk_tag(self._ns, self.__class__.ORIGINAL_IP_TAG))
+        
+        orig_ip_elem.text = gateway_nat_rule.orig_ip
+        
+        orig_port_elem = ET.SubElement(
+                gateway_nat_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.ORIGINAL_PORT_TAG))
+        
+        orig_port_elem.text = gateway_nat_rule.orig_port
+        
+        transl_ip_elem = ET.SubElement(
+                gateway_nat_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.TRANSLATED_IP_TAG))
+        
+        transl_ip_elem.text = gateway_nat_rule.transl_ip
+        
+        transl_port_elem = ET.SubElement(
+                gateway_nat_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.TRANSLATED_IP_TAG))
+        
+        transl_port_elem.text = gateway_nat_rule.transl_port
+        
+        protocol_elem = ET.SubElement(
+                gateway_nat_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.PROTOCOL_TAG))
+        
+        protocol_elem.text = gateway_nat_rule.protocol
+        
+        return gateway_nat_rule_elem
+
+    
 class EdgeGatewayClientError(Exception):
     '''Generic exception class for EdgeGatewayClient'''
     
@@ -114,6 +223,8 @@ class EdgeGatewayClient(object):
     :cvar SETTINGS_SECTION_NAME: section in config file to read parameters from
     - applies to from_settings_file classmethod only
     ''' 
+    VCD_XML_NS = et_utils.VCD_XML_NS
+    
     SETTINGS_MK_CON = 'EdgeGatewayClient'
     SETTINGS_GET_CONFIG = 'EdgeGatewayClient.get_config'
     SETTINGS_ROUTE_HOST = 'EdgeGatewayClient.set_host_routing'
@@ -133,33 +244,10 @@ class EdgeGatewayClient(object):
     LINK_TAG = 'Link'
     LINK_ATTR_TAG = 'href'
     REL_ATTR_TAG = 'rel'
-    EDGE_GATEWAYS_LINK_REL = 'edgeGateways'
-    
-    EDGE_GATEWAY_REC_TAG = 'EdgeGatewayRecord'
-    
-    CONFIG_EDGE_GATEWAY_REL = 'edgeGateway:configureServices'
-    NAT_SERVICE_XPATH = ('Configuration/EdgeGatewayServiceConfiguration/'
-                         'NatService')
-    EDGE_GATEWAY_SERVICE_CONF_XPATH = \
-                        'Configuration/EdgeGatewayServiceConfiguration'
-    
+    EDGE_GATEWAYS_LINK_REL = 'edgeGateways' 
+    EDGE_GATEWAY_REC_TAG = 'EdgeGatewayRecord'   
+    CONFIG_EDGE_GATEWAY_REL = 'edgeGateway:configureServices'    
     GATEWAY_IFACE_TAG = 'GatewayInterface'
-        
-    GATEWAY_NAT_RULE_TAG = 'GatewayNatRule'
-                 
-    # NAT rule configuration
-    NAT_RULE_TAG = 'NatRule'
-    NAT_RULE_TYPE_TAG = 'RuleType'
-    SRC_NAT_RULE_TYPE = 'SNAT'
-    DEST_NAT_RULE_TYPE = 'DNAT'
-    NAT_RULE_IS_ENABLED_TAG = 'IsEnabled'
-    NAT_RULE_ID_TAG = 'Id'
-    
-    ORIGINAL_IP_TAG = 'OriginalIp'
-    ORIGINAL_PORT_TAG = 'OriginalPort'
-    TRANSLATED_IP_TAG = 'TranslatedIp'
-    TRANSLATED_PORT_TAG = 'TranslatedPort'
-    PROTOCOL_TAG = 'Protocol'
     
     def __init__(self):
         self.driver = None
@@ -373,12 +461,8 @@ class EdgeGatewayClient(object):
                         gateway_iface.subnet_participation.ip_ranges.ip_range]
                 
                 return iptools.IpRangeList(
-#                                *tuple([iptools.IpRange(i.start_address.value_,
-#                                                 i.end_address.value_)
-#                                        for i in ip_ranges]))
-                                *tuple([(i.start_address.value_,
-                                         i.end_address.value_)
-                                        for i in ip_ranges]))
+                        *tuple([(i.start_address.value_, i.end_address.value_)
+                                for i in ip_ranges]))
             
     @classmethod
     def _get_edgegateway_update_uri(cls, gateway):
@@ -450,7 +534,7 @@ class EdgeGatewayClient(object):
                         (external_ip, [i.id.value_ for i in used_nat_rules]))
         
         # Source NAT rule
-        snat_rule = NatRule(rule_type=cls.SRC_NAT_RULE_TYPE,
+        snat_rule = NatRule(rule_type=ETreeNatRule.SRC_RULE_TYPE,
                             rule_id=str(next_nat_rule_id),
                             rule_is_enabled=True,
                             iface_uri=iface_uri,
@@ -460,7 +544,7 @@ class EdgeGatewayClient(object):
         
         # Destination NAT rule
         next_nat_rule_id += 1
-        dnat_rule = NatRule(rule_type=cls.DEST_NAT_RULE_TYPE,
+        dnat_rule = NatRule(rule_type=ETreeNatRule.DEST_RULE_TYPE,
                             rule_id=str(next_nat_rule_id),
                             rule_is_enabled=True,
                             iface_uri=iface_uri,
@@ -468,17 +552,28 @@ class EdgeGatewayClient(object):
                             orig_ip=external_ip,
                             transl_ip=internal_ip)
         
-        cls.add_nat_rules(gateway, [snat_rule, dnat_rule])
+        cls.add_nat_rules(gateway, snat_rule, dnat_rule)
         
         _log_etree_elem(gateway._elem)
     
     @classmethod
-    def add_nat_rules(cls, gateway, nat_rules):
+    def add_nat_rules(cls, gateway, *arg):
         '''Add new NAT rule to Edge Gateway Configuration ElementTree
         
         :param gateway: gateway object contains _elem attribute which is the
         root of the Gateway Configuration ElementTree
         '''
+        # NAT rules can be added as an argument list or a single argument which
+        # is a list
+        if len(arg) == 0:
+            raise TypeError('add_nat_rules expects at least 2 arguments, got 1')
+
+        elif len(arg) == 1 and utils.is_iterable(arg):
+            nat_rules = arg[0]
+            
+        else:
+            nat_rules = arg
+            
         nat_service = gateway.configuration.\
             edge_gateway_service_configuration.nat_service
         
@@ -487,8 +582,10 @@ class EdgeGatewayClient(object):
         if not hasattr(nat_service, 'nat_rule'):
             nat_service.nat_rule = []
             
+        ns = et_utils.get_namespace(gateway._elem)
+        
         for nat_rule in nat_rules:
-            nat_service._elem.append(cls._create_nat_rule_elem(nat_rule))
+            nat_service._elem.append(ETreeNatRule(ns=ns).create_elem(nat_rule))
             nat_service.nat_rule.append(nat_rule)
     
     @classmethod
@@ -524,83 +621,3 @@ class EdgeGatewayClient(object):
             if nat_rule not in nat_rules_del
         ]
         _log_etree_elem(gateway._elem)
-
-    def _create_nat_rule_elem(self, nat_rule, ns=None):   
-        '''Create XML for a new NAT rule appending it to the NAT Service element
-        '''            
-        cls = self.__class__
-                                                                   
-        nat_rule_elem = ET.Element(
-                    et_utils.mk_tag(self._ns, cls.NAT_RULE_TAG))
-        
-        rule_type_elem = ET.SubElement(
-                    nat_rule_elem, 
-                    et_utils.mk_tag(self._ns, cls.NAT_RULE_TYPE_TAG))
-        
-        rule_type_elem.text = nat_rule.rule_type
-        
-        is_enabled_elem = ET.SubElement(
-                nat_rule_elem, 
-                et_utils.mk_tag(self._ns, cls.NAT_RULE_IS_ENABLED))
-        
-        is_enabled_elem.text = utils.bool2str(nat_rule.rule_is_enabled)
-        
-        id_elem = ET.SubElement(
-                nat_rule_elem, 
-                et_utils.mk_tag(self._ns, cls.NAT_RULE_ID_TAG))
-                
-        id_elem.text = str(nat_rule.rule_id)
-        
-        gateway_nat_rule_elem = self._create_gateway_nat_rule_elem(
-                                                    nat_rule.gateway_nat_rule)
-        
-        nat_rule_elem.append(gateway_nat_rule_elem)
-        
-        return nat_rule_elem
-    
-    def _create_gateway_nat_rule_elem(self, gateway_nat_rule):
-        '''Make a NAT Rule gateway interface XML element
-        '''
-        gateway_nat_rule_elem = ET.Element(
-                        et_utils.mk_tag(self._ns, 
-                                        self.__class__.GATEWAY_NAT_RULE_TAG))
-        
-        ET.SubElement(gateway_nat_rule_elem,
-                      et_utils.mk_tag(self._ns, 'Interface'),
-                      attrib={
-                         'href': gateway_nat_rule.iface_uri,
-                         'name': gateway_nat_rule.iface_name,
-                         'type': gateway_nat_rule.iface_uri_type
-                      })
-        orig_ip_elem = ET.SubElement(
-                 gateway_nat_rule_elem, 
-                 et_utils.mk_tag(self._ns, self.__class__.ORIGINAL_IP_TAG))
-        
-        orig_ip_elem.text = gateway_nat_rule.orig_ip
-        
-        orig_port_elem = ET.SubElement(
-                gateway_nat_rule_elem, 
-                et_utils.mk_tag(self._ns, self.__class__.ORIGINAL_PORT_TAG))
-        
-        orig_port_elem.text = gateway_nat_rule.orig_port
-        
-        transl_ip_elem = ET.SubElement(
-                gateway_nat_rule_elem, 
-                et_utils.mk_tag(self._ns, self.__class__.TRANSLATED_IP_TAG))
-        
-        transl_ip_elem.text = gateway_nat_rule.transl_ip
-        
-        transl_port_elem = ET.SubElement(
-                gateway_nat_rule_elem, 
-                et_utils.mk_tag(self._ns, self.__class__.TRANSLATED_IP_TAG))
-        
-        transl_port_elem.text = gateway_nat_rule.transl_port
-        
-        protocol_elem = ET.SubElement(
-                gateway_nat_rule_elem, 
-                et_utils.mk_tag(self._ns, self.__class__.PROTOCOL_TAG))
-        
-        protocol_elem.text = gateway_nat_rule.protocol
-        
-        return gateway_nat_rule_elem
-

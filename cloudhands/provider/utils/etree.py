@@ -9,6 +9,7 @@ __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
 from cloudhands.provider import utils
 
+VCD_XML_NS = "http://www.vmware.com/vcloud/v1.5"
 
 NS_START_DELIM = '{'
 NS_END_DELIM = '}'
