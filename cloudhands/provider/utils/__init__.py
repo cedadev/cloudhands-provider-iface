@@ -13,6 +13,7 @@ import re
 from ConfigParser import SafeConfigParser
 
 
+is_iterable = lambda obj: getattr(obj, '__iter__', False)
 is_bool = lambda val: val.lower() in ('true', 'false')
 bool2str = lambda val: str(val).lower()
 
