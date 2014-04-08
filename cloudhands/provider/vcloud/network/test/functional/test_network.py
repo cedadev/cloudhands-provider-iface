@@ -104,8 +104,6 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
                                                inputs['internal_ip'],
                                                inputs['external_ip'])
         
-        self.edgegateway_clnt.post_config(edgegateway_config)
-        
         res = self.edgegateway_clnt.post_config(edgegateway_config)
         
         self.assert_(res)
