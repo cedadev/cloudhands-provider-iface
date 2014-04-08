@@ -181,7 +181,7 @@ class ETreeGatewayNatRule(object):
         
         transl_port_elem = ET.SubElement(
                 gateway_nat_rule_elem, 
-                et_utils.mk_tag(self._ns, self.__class__.TRANSLATED_IP_TAG))
+                et_utils.mk_tag(self._ns, self.__class__.TRANSLATED_PORT_TAG))
         
         transl_port_elem.text = gateway_nat_rule.transl_port
         
@@ -576,7 +576,14 @@ class EdgeGatewayClient(object):
             
         nat_service = gateway.configuration.\
             edge_gateway_service_configuration.nat_service
-        
+            
+        nat_service_elem = gateway._elem.find(
+                                fixxpath(gateway._elem, cls.NAT_SERVICE_XPATH))
+        if nat_service_elem is None:
+            raise EdgeGatewayClientResourceNotFound('No <NatService/> element '
+                                                    'found in returned Edge '
+                                                    'Gateway configuration')
+
         # Input Gateway may have not had any NAT rules allocated to it 
         # previously
         if not hasattr(nat_service, 'nat_rule'):
