@@ -278,7 +278,15 @@ class EdgeGatewayClient(object):
         driver_cls = get_driver(Provider.VCLOUD)
         self.driver = driver_cls(username, password, host=hostname,
                                  api_version=api_version, port=port)
-         
+     
+    def connect_from_settings(self):
+        '''Connect using settings read from config file'''
+        self.connect(self.settings['username'], 
+                     self.settings['password'], 
+                     self.settings['hostname'], 
+                     port=self.settings['port'], 
+                     ap_version=self.settings['api_version'])
+           
     def parse_settings_file(self, settings_filepath):
         '''Get settings needed for initialising the vCD driver from a config
         file
