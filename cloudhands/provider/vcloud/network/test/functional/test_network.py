@@ -53,16 +53,16 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
                                             self.__class__.SETTINGS_FILEPATH)
         
         con_settings = self.edgegateway_clnt.settings[
-                                        EdgeGatewayClient.SETTINGS_MK_CON]
+                                        EdgeGatewayClient.SETTINGS_GLOBAL]
         self.edgegateway_clnt.connect(con_settings['username'], 
                                       con_settings['password'], 
                                       con_settings['hostname'])
         
         self.vdc_name = self.edgegateway_clnt.settings[
-                    EdgeGatewayClient.SETTINGS_GET_CONFIG]['vdc_name']
+                    EdgeGatewayClient.SETTINGS_GLOBAL]['vdc_name']
                             
         self.edgegateway_name = self.edgegateway_clnt.settings[
-                    EdgeGatewayClient.SETTINGS_GET_CONFIG]['edgegateway_name']
+                    EdgeGatewayClient.SETTINGS_GLOBAL]['edgegateway_name']
                             
     def test01_read_settings_file(self):
         edgegateway_clnt = EdgeGatewayClient()

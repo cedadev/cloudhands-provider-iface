@@ -13,17 +13,12 @@ import xml.etree.ElementTree as ET
 
 import iptools
 from libcloud.compute.providers import Provider, DRIVERS, get_driver
-from libcloud.compute.drivers.vcloud import get_url_path, fixxpath
+from libcloud.compute.drivers.vcloud import (get_url_path, fixxpath, 
+                                             DEFAULT_TASK_COMPLETION_TIMEOUT)
 
 from cloudhands.provider import utils
 import cloudhands.provider.utils.etree as et_utils
 
-
-# TODO: Fix location
-DRIVERS[Provider.VCLOUD] = (
-    "cloudhands.ops.test.functional.cloudclient.vcloud.patch.vcloud",
-    "VCloud_5_5_NodeDriver"
-)
 
 log = logging.getLogger(__name__)
 
@@ -225,14 +220,13 @@ class EdgeGatewayClient(object):
     ''' 
     VCD_XML_NS = et_utils.VCD_XML_NS
     
-    SETTINGS_MK_CON = 'EdgeGatewayClient'
-    SETTINGS_GET_CONFIG = 'EdgeGatewayClient.get_config'
+    SETTINGS_GLOBAL = 'EdgeGatewayClient'
     SETTINGS_ROUTE_HOST = 'EdgeGatewayClient.set_host_routing'
     SETTINGS_RM_NAT_RULES = 'EdgeGatewayClient.remove_nat_rules'
+    SETTINGS_CANCEL_TASKS = 'EdgeGatewayClient.cancel_tasks'
     
     SETTINGS_SECTION_NAMES = (
-        SETTINGS_MK_CON,
-        SETTINGS_GET_CONFIG,
+        SETTINGS_GLOBAL,
         SETTINGS_ROUTE_HOST,
         SETTINGS_RM_NAT_RULES
     ) 
@@ -281,11 +275,11 @@ class EdgeGatewayClient(object):
      
     def connect_from_settings(self):
         '''Connect using settings read from config file'''
-        self.connect(self.settings['username'], 
-                     self.settings['password'], 
-                     self.settings['hostname'], 
-                     port=self.settings['port'], 
-                     ap_version=self.settings['api_version'])
+        settings = self.settings[self.__class__.SETTINGS_GLOBAL]
+        
+        self.connect(settings['username'], settings['password'], 
+                     settings['hostname'], port=settings['port'], 
+                     api_version=settings['api_version'])
            
     def parse_settings_file(self, settings_filepath):
         '''Get settings needed for initialising the vCD driver from a config
@@ -296,21 +290,32 @@ class EdgeGatewayClient(object):
         cfg.read(settings_filepath)
         
         for section_name in cfg.sections():
-            if section_name == cls.SETTINGS_MK_CON:
+            if section_name == cls.SETTINGS_GLOBAL:
                 self.settings[section_name] = {
+                    'driver_path': cfg.get(section_name, 'driver_path'),
                     'username':  cfg.get(section_name, 'username'),
                     'password':  cfg.get(section_name, 'password'),
                     'hostname':  cfg.get(section_name, 'hostname'),
                     'port':  cfg.getint(section_name, 'port'),
                     'api_version':  cfg.get(section_name, 'api_version'),
-                }
-                
-            elif section_name == cls.SETTINGS_GET_CONFIG:
-                self.settings[section_name] = {
+                    'cacert_filepath': cfg.get(section_name, 'cacert_filepath'),
+                    'verify_ssl_certs': cfg.getboolean(section_name, 
+                                                       'verify_ssl_certs'),
                     'vdc_name': cfg.get(section_name, 'vdc_name'),
                     'edgegateway_name': cfg.get(section_name, 
                                                 'edgegateway_name')
                 }
+                if self.settings[section_name]['driver_path']:
+                    driver_path = self.settings[section_name]['driver_path']
+                    DRIVERS[Provider.VCLOUD] = tuple(driver_path.rsplit('.', 1))
+
+                if self.settings[section_name]['verify_ssl_certs'] == False:
+                    # This will switch off verification of the server's identity
+                    # potentially allowing credentials to be passed to an
+                    # unauthenticated 3rd party.  Make sure you know what you 
+                    # doing!
+                    from libcloud import security
+                    security.VERIFY_SSL_CERT = False
                 
             elif section_name == cls.SETTINGS_ROUTE_HOST:
                 self.settings[section_name] = {
@@ -327,6 +332,14 @@ class EdgeGatewayClient(object):
                                          'nat_rule_ids').split(',')
                         ]
                 }
+            elif section_name == cls.SETTINGS_CANCEL_TASKS:
+                if cfg.has_option(section_name, 'task_uris'):
+                    task_uris_ = cfg.get(section_name, 'task_uris').split(',')
+                    self.settings[section_name] = {
+                        'task_uris': [i.strip() for i in task_uris_]
+                    }
+                else:
+                    self.settings[section_name] = {'task_uris': None}
         
     def get_config(self, vdc_name=None, names=None):
         '''Retrieve configurations for each Edge Gateway in a given 
@@ -366,10 +379,11 @@ class EdgeGatewayClient(object):
         
         return edgegateway_configs
 
-    def post_config(self, gateway):
+    def post_config(self, gateway, timeout=DEFAULT_TASK_COMPLETION_TIMEOUT,
+                    cancel_after_timeout=False):
         '''Despatch updated Edge Gateway configuration
         
-        :param gateway_config: new configuration to posted to the Edge Gateway
+        :param gateway: new configuration to posted to the Edge Gateway
         '''
         update_uri = self._get_edgegateway_update_uri(gateway)
         
@@ -382,9 +396,38 @@ class EdgeGatewayClient(object):
         if res.status < 200 or res.status >= 300:
             log.error('Error sending Edge Gateway configuration to %r: %r:',
                       update_uri, ET.tostring(res.object))
+            
+        response = et_utils.obj_from_elem_walker(res.object)
         
-        return res
+        self.driver._wait_for_task_completion(response.href,
+                                              timeout=timeout)
+        if cancel_after_timeout:
+            log.info('Task cancelled following timeout')
+            
+        return response
 
+    def cancel_tasks(self, gateway, task_uris=None):
+        '''Cancel queued tasks
+        
+        '''
+        if not hasattr(gateway, 'tasks'):
+            return []
+        
+        if task_uris is None:
+            task_uris = [task.href for task in gateway.tasks.task]
+        
+        try:    
+            for task_uri in task_uris:
+                self.driver.connection.request(task_uri + '/action/cancel',
+                                               method='POST')
+        except Exception, e:
+            log.error('Error cancelling task %r:', task_uri)
+            for line in ET.tostringlist(e.args[0]):
+                log.error(line)
+            raise
+        
+        return task_uris
+                            
     def _get_elems(self, uri, xpath):
         '''Helper method - Get XML elements from a given URI and XPath search 
         over returned XML content

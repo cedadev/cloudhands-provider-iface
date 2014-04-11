@@ -8,6 +8,7 @@ __date__ = "24/03/14"
 __copyright__ = "(C) 2014 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
+import os
 import logging
 import argparse
 import xml.etree.ElementTree as ET
@@ -15,66 +16,89 @@ import xml.etree.ElementTree as ET
 from cloudhands.provider.vcloud.network.client import EdgeGatewayClient
 
 
+log = logging.getLogger(__name__)
+
+
 def main():
     parser = argparse.ArgumentParser(
                         description='vCloud Director Edge Gateway interface')
     
-    parser.add_argument('--config-file', '-f', dest='config_filepath', 
-                        action='store_const',
-                        const=sum, default=max,
-                        help='Path to Configuration file which sets')
+    parser.add_argument('--config-file', '-f', dest='config_filepath',
+                        help='Path to Configuration file which sets connection '
+                             'parameters and which command to execute.')
     
     parser.add_argument('--log-level', '-l', dest='log_level', 
-                        action='store_const',
-                        const=sum, default=logging.NOTSET,
-                        help='Send logging information to stdout')
+                        help='Set log level for output to stdout.  Choose one '
+                        'of %r, default is silent mode.' % 
+                            [logging.getLevelName(i) 
+                             for i in range(logging.DEBUG, 
+                                            logging.CRITICAL+1, 
+                                            10)])
     
     args = parser.parse_args()
     
-    logging.basicConfig(format='%(asctime)s %(message)s', level=args.log_level)
+    if args.log_level is not None:
+        logging.basicConfig(format='%(asctime)s %(message)s', 
+                            level=logging.getLevelName(args.log_level))
     
+    if args.config_filepath is None:
+        raise SystemExit('Error: no configuration file set.%s%s' % 
+                         (os.linesep, parser.format_help()))
+     
     edgegateway_clnt = EdgeGatewayClient.from_settings_file(
                                                         args.config_filepath)
     
     # Connect to vCloud Director service
     edgegateway_clnt.connect_from_settings()
     
+    global_settings = edgegateway_clnt.settings[
+                                            EdgeGatewayClient.SETTINGS_GLOBAL]
+    
     # Check actions to execute from settings file section - allow one connection
     # section followed by an action section - first filter out connect section
     action_name = None
     for section_name in edgegateway_clnt.settings.keys():
-        if section_name != EdgeGatewayClient.SETTINGS_MK_CON:
+        if section_name != EdgeGatewayClient.SETTINGS_GLOBAL:
             action_name = section_name
             break
     
-    if action_name is None:
-        raise SystemExit('No action section set in configuration file')
-    
     # Retrieving the current configuration settings applies to all actions
-    edgegateway_config = edgegateway_clnt.get_config()
+    edgegateway_configs = edgegateway_clnt.get_config(
+                                    vdc_name=global_settings['vdc_name'],
+                                    names=global_settings['edgegateway_name'])
     
-    settings = edgegateway_clnt.settings[action_name]
-    
-    if action_name == EdgeGatewayClient.SETTINGS_GET_CONFIG:
-        # Display the current configuration
-        print(ET.tostring(edgegateway_config._elem))
+    if action_name is None:
+        # Default to display the current configuration
+        print(ET.tostring(edgegateway_configs[0]._elem))
         
     elif action_name == EdgeGatewayClient.SETTINGS_ROUTE_HOST:
+        settings = edgegateway_clnt.settings[action_name]
         
         # NAT host IP from VDC to outside
-        edgegateway_clnt.set_host_routing(settings['iface_name'], 
+        edgegateway_clnt.set_host_routing(edgegateway_configs[0],
+                                          settings['iface_name'], 
                                           settings['internal_ip'], 
                                           settings['external_ip'])
         
-        edgegateway_clnt.post_config(edgegateway_config)
+        result = edgegateway_clnt.post_config(edgegateway_configs[0])
         
     elif action_name == EdgeGatewayClient.SETTINGS_RM_NAT_RULES:
+        settings = edgegateway_clnt.settings[action_name]
         
         # Remove NAT rules by identifier
-        edgegateway_clnt.edgegateway_clnt(edgegateway_config,
+        edgegateway_clnt.remove_nat_rules(edgegateway_configs[0],
                                           settings['nat_rule_ids'])
         
-        edgegateway_clnt.post_config(edgegateway_config)
+        result = edgegateway_clnt.post_config(edgegateway_configs[0])
+        log.debug(ET.tostring(result._elem))
+        
+    elif action_name == EdgeGatewayClient.SETTINGS_CANCEL_TASKS:
+        settings = edgegateway_clnt.settings[action_name]
+        
+        # Purge tasks waiting to be executed
+        result = edgegateway_clnt.cancel_tasks(edgegateway_configs[0],
+                                               task_uris=settings['task_uris'])
+
        
         
 if __name__ == '__main__':
