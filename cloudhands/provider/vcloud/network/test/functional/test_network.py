@@ -53,6 +53,7 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
                                             self.__class__.SETTINGS_FILEPATH)
         
         con_settings = self.edgegateway_clnt.settings[
+<<<<<<< HEAD
                                         EdgeGatewayClient.SETTINGS_GLOBAL]
         self.edgegateway_clnt.connect(con_settings['username'], 
                                       con_settings['password'], 
@@ -122,6 +123,77 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
         res = self.edgegateway_clnt.post_config(edgegateway_config)
         
         self.assertTrue(res)
+=======
+                                        EdgeGatewayClient.SETTINGS_MK_CON]
+        self.edgegateway_clnt.connect(con_settings['username'], 
+                                      con_settings['password'], 
+                                      con_settings['hostname'])
+        
+        self.vdc_name = self.edgegateway_clnt.settings[
+                    EdgeGatewayClient.SETTINGS_GET_CONFIG]['vdc_name']
+                            
+        self.edgegateway_name = self.edgegateway_clnt.settings[
+                    EdgeGatewayClient.SETTINGS_GET_CONFIG]['edgegateway_name']
+                            
+    def test01_read_settings_file(self):
+        edgegateway_clnt = EdgeGatewayClient()
+        edgegateway_clnt.parse_settings_file(self.__class__.SETTINGS_FILEPATH)
+        
+        for section_name in edgegateway_clnt.settings.keys():
+            for i, param in enumerate(edgegateway_clnt.settings[section_name]):
+                self.assert_(param, 'Missing param %r for section %r' % 
+                             (i, section_name))
+        
+    def test02_instantiate_from_settings_file(self):
+        vdc_uri = self.edgegateway_clnt.get_vdc_uri(self.vdc_name)
+        self.assert_(vdc_uri)  
+        uri = self.edgegateway_clnt.get_vdc_edgegateways_uri(vdc_uri)
+    
+        self.assert_(uri)
+        log.info('VDC Edge Gateways URI: %r', uri)
+        
+    def test03_get_config_for_specified_vdc_and_edgegateway(self):
+        # Retrieve named Edge Gateway from given VDC
+        edgegateway_configs = self.edgegateway_clnt.get_config(
+                                                vdc_name=self.vdc_name,
+                                                names=[self.edgegateway_name])
+        self.assert_(edgegateway_configs)
+        self.assert_(len(edgegateway_configs) == 1)
+        
+    def test04_set_host_routing(self):
+        edgegateway_configs = self.edgegateway_clnt.get_config(
+                                                vdc_name=self.vdc_name,
+                                                names=[self.edgegateway_name])
+        
+        edgegateway_config = edgegateway_configs[0]
+        
+        inputs = self.edgegateway_clnt.settings[
+                                        EdgeGatewayClient.SETTINGS_ROUTE_HOST]
+        
+        self.edgegateway_clnt.set_host_routing(edgegateway_config,
+                                               inputs['iface_name'],
+                                               inputs['internal_ip'],
+                                               inputs['external_ip'])
+        
+        res = self.edgegateway_clnt.post_config(edgegateway_config)
+        
+        self.assert_(res)
+
+    def test05_remove_nat_rules(self):
+        edgegateway_configs = self.edgegateway_clnt.get_config(
+                                                vdc_name=self.vdc_name,
+                                                names=[self.edgegateway_name])
+        edgegateway_config = edgegateway_configs[0]
+        
+        nat_rule_ids = self.edgegateway_clnt.settings[
+                        EdgeGatewayClient.SETTINGS_RM_NAT_RULES]['nat_rule_ids']
+
+        EdgeGatewayClient.remove_nat_rules(edgegateway_config, nat_rule_ids)
+        
+        res = self.edgegateway_clnt.post_config(edgegateway_config)
+        
+        self.assert_(res)
+>>>>>>> branch 'master' of git@proj.badc.rl.ac.uk:cloudhands-provider-iface.git
     
               
 if __name__ == "__main__":
