@@ -68,17 +68,17 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
         edgegateway_clnt = EdgeGatewayClient()
         edgegateway_clnt.parse_settings_file(self.__class__.SETTINGS_FILEPATH)
         
-        for section_name in edgegateway_clnt.settings.keys():
+        for section_name in list(edgegateway_clnt.settings.keys()):
             for i, param in enumerate(edgegateway_clnt.settings[section_name]):
-                self.assert_(param, 'Missing param %r for section %r' % 
+                self.assertTrue(param, 'Missing param %r for section %r' % 
                              (i, section_name))
         
     def test02_instantiate_from_settings_file(self):
         vdc_uri = self.edgegateway_clnt.get_vdc_uri(self.vdc_name)
-        self.assert_(vdc_uri)  
+        self.assertTrue(vdc_uri)  
         uri = self.edgegateway_clnt.get_vdc_edgegateways_uri(vdc_uri)
     
-        self.assert_(uri)
+        self.assertTrue(uri)
         log.info('VDC Edge Gateways URI: %r', uri)
         
     def test03_get_config_for_specified_vdc_and_edgegateway(self):
@@ -86,8 +86,8 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
         edgegateway_configs = self.edgegateway_clnt.get_config(
                                                 vdc_name=self.vdc_name,
                                                 names=[self.edgegateway_name])
-        self.assert_(edgegateway_configs)
-        self.assert_(len(edgegateway_configs) == 1)
+        self.assertTrue(edgegateway_configs)
+        self.assertTrue(len(edgegateway_configs) == 1)
         
     def test04_set_host_routing(self):
         edgegateway_configs = self.edgegateway_clnt.get_config(
@@ -106,7 +106,7 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
         
         res = self.edgegateway_clnt.post_config(edgegateway_config)
         
-        self.assert_(res)
+        self.assertTrue(res)
 
     def test05_remove_nat_rules(self):
         edgegateway_configs = self.edgegateway_clnt.get_config(
@@ -121,7 +121,7 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
         
         res = self.edgegateway_clnt.post_config(edgegateway_config)
         
-        self.assert_(res)
+        self.assertTrue(res)
     
               
 if __name__ == "__main__":

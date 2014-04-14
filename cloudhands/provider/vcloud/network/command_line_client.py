@@ -57,7 +57,7 @@ def main():
     # Check actions to execute from settings file section - allow one connection
     # section followed by an action section - first filter out connect section
     action_name = None
-    for section_name in edgegateway_clnt.settings.keys():
+    for section_name in list(edgegateway_clnt.settings.keys()):
         if section_name != EdgeGatewayClient.SETTINGS_GLOBAL:
             action_name = section_name
             break

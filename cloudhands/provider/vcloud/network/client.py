@@ -327,7 +327,7 @@ class EdgeGatewayClient(object):
             elif section_name == cls.SETTINGS_RM_NAT_RULES:
                 self.settings[section_name] = {
                     'nat_rule_ids': [
-                        long(i.strip())
+                        int(i.strip())
                         for i in cfg.get(section_name, 
                                          'nat_rule_ids').split(',')
                         ]
@@ -420,7 +420,7 @@ class EdgeGatewayClient(object):
             for task_uri in task_uris:
                 self.driver.connection.request(task_uri + '/action/cancel',
                                                method='POST')
-        except Exception, e:
+        except Exception as e:
             log.error('Error cancelling task %r:', task_uri)
             for line in ET.tostringlist(e.args[0]):
                 log.error(line)

@@ -10,7 +10,12 @@ __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
 import keyword
 import re
-from ConfigParser import SafeConfigParser
+
+try:
+    from configparser import SafeConfigParser
+    
+except ImportError:
+    from ConfigParser import SafeConfigParser
 
 
 is_iterable = lambda obj: getattr(obj, '__iter__', False)
@@ -32,7 +37,7 @@ def infer_type_from_str(val):
     
     # Try for an integer
     try:
-        return long(val)
+        return int(val)
  
     except ValueError:
         # Check for floating point number
@@ -52,7 +57,7 @@ def mk_valid_varname(name):
     :return: equivalent name in lower case with underscores
     :rtype: basestring
     '''
-    if not isinstance(name, basestring):
+    if not isinstance(name, str):
         return None
     
     varname = camelcase2underscores(re.sub('[^0-9a-zA-Z_]', '_', name))
