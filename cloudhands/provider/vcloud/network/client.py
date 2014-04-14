@@ -8,6 +8,7 @@ __date__ = "24/03/14"
 __copyright__ = "(C) 2014 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
+from os import path
 import logging
 import xml.etree.ElementTree as ET
 
@@ -287,6 +288,10 @@ class EdgeGatewayClient(object):
         '''
         cls = self.__class__
         cfg = utils.CaseSensitiveConfigParser()
+        
+        if not path.exists(settings_filepath):
+            raise IOError('Configuration file not found %r' % settings_filepath)
+        
         cfg.read(settings_filepath)
         
         for section_name in cfg.sections():

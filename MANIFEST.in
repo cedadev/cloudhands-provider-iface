@@ -1,0 +1,12 @@
+#
+# MANIFEST.in file to enable inclusion of configuration files
+# 
+# JASMIN Cloud Project
+# 
+# P J Kershaw 14/04/14
+# 
+# Copyright (C) 2014 STFC
+# 
+# BSD - See LICENCE file for details
+include cloudhands/provider/vcloud/network/test/functional/config/edgegateway_clnt.cfg
+include README.rst

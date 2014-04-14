@@ -4,7 +4,7 @@
 JASMIN Cloud Project
 """
 __author__ = "P J Kershaw"
-__date__ = "10/08/09"
+__date__ = "14/04/14"
 __copyright__ = "(C) 2014 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 __contact__ = "Philip.Kershaw@stfc.ac.uk"
@@ -38,14 +38,14 @@ setup(
     license='BSD - see LICENSE file',
     packages=find_packages(),
     namespace_packages=['cloudhands', 'cloudhands.provider',
-                             'cloudhands.provider.vcloud'],
+                        'cloudhands.provider.vcloud'],
+    install_requires=['libcloud'],
     entry_points={
     'console_scripts': [
         ('network_client=cloudhands.provider.vcloud.network.'
          'command_line_client:main'),
         ],
     },
-    include_package_data=True,
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
