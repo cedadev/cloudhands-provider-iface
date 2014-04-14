@@ -39,7 +39,7 @@ setup(
     packages=find_packages(),
     namespace_packages=['cloudhands', 'cloudhands.provider',
                         'cloudhands.provider.vcloud'],
-    install_requires=['libcloud'],
+    install_requires=['apache-libcloud'],
     entry_points={
     'console_scripts': [
         ('network_client=cloudhands.provider.vcloud.network.'
