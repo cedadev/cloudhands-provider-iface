@@ -25,7 +25,7 @@ THIS_DIR = path.dirname(__file__)
 _long_description = open(path.join(THIS_DIR, 'README.rst')).read()
 
 setup(
-    name='cloudhands-provider-iface',
+    name='jasmincloud-provider-iface',
     version='0.0.1',
     description=('Client interface to multiple cloud providers '
                  'particularly vCloud, builds on Apache Libcloud'),
@@ -37,12 +37,12 @@ setup(
     url='http://jasmin.ac.uk/',
     license='BSD - see LICENSE file',
     packages=find_packages(),
-    namespace_packages=['cloudhands', 'cloudhands.provider',
-                        'cloudhands.provider.vcloud'],
+    namespace_packages=['jasmincloud', 'jasmincloud.provider',
+                        'jasmincloud.provider.vcloud'],
     install_requires=['apache-libcloud'],
     entry_points={
     'console_scripts': [
-        ('network_client=cloudhands.provider.vcloud.network.'
+        ('network_client=jasmincloud.provider.vcloud.network.'
          'command_line_client:main'),
         ],
     },
