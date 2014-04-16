@@ -11,6 +11,7 @@ __revision__ = "$Id$"
 import os
 import logging
 import argparse
+import getpass
 import xml.etree.ElementTree as ET
 
 from jasmincloud.provider.vcloud.network.client import EdgeGatewayClient
@@ -48,11 +49,17 @@ def main():
     edgegateway_clnt = EdgeGatewayClient.from_settings_file(
                                                         args.config_filepath)
     
-    # Connect to vCloud Director service
-    edgegateway_clnt.connect_from_settings()
-    
     global_settings = edgegateway_clnt.settings[
                                             EdgeGatewayClient.SETTINGS_GLOBAL]
+    
+    if global_settings['password'] is None:
+        # Prompt for password from command line if not set in settings file
+        global_settings['password'] = getpass.getpass(
+                                            'Enter password for user %r: ' % 
+                                            global_settings['username'])
+                                                   
+    # Connect to vCloud Director service
+    edgegateway_clnt.connect_from_settings()
     
     # Check actions to execute from settings file section - allow one connection
     # section followed by an action section - first filter out connect section

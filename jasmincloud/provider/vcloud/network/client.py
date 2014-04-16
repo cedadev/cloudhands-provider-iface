@@ -246,7 +246,6 @@ class EdgeGatewayClient(object):
     
     def __init__(self):
         self.driver = None
-        self._ns = None
         self.settings = {}
 
     @classmethod
@@ -296,10 +295,20 @@ class EdgeGatewayClient(object):
         
         for section_name in cfg.sections():
             if section_name == cls.SETTINGS_GLOBAL:
+                if cfg.has_option(section_name, 'driver_path'):
+                    driver_path = cfg.get(section_name, 'driver_path')
+                else:
+                    driver_path = None
+
+                if cfg.has_option(section_name, 'password'):
+                    password = cfg.get(section_name, 'password')
+                else:
+                    password = None
+                    
                 self.settings[section_name] = {
-                    'driver_path': cfg.get(section_name, 'driver_path'),
+                    'driver_path': driver_path,
                     'username':  cfg.get(section_name, 'username'),
-                    'password':  cfg.get(section_name, 'password'),
+                    'password':  password,
                     'hostname':  cfg.get(section_name, 'hostname'),
                     'port':  cfg.getint(section_name, 'port'),
                     'api_version':  cfg.get(section_name, 'api_version'),
@@ -379,9 +388,7 @@ class EdgeGatewayClient(object):
                                                     edgegateway_rec.href)
                                    for edgegateway_rec in edgegateway_recs 
                                    if edgegateway_rec.name in names]
-
-        self._ns = et_utils.get_namespace(edgegateway_configs[0]._elem)
-        
+                
         return edgegateway_configs
 
     def post_config(self, gateway, timeout=DEFAULT_TASK_COMPLETION_TIMEOUT,
@@ -505,6 +512,12 @@ class EdgeGatewayClient(object):
         for gateway_iface in gateway_ifaces:
             if gateway_iface.name.value_ == iface_name:
                 
+                # Check that an IP range has been set
+                if not hasattr(gateway_iface.subnet_participation, 'ip_ranges'):
+                    raise EdgeGatewayClientResourceNotFound(
+                            'No IP Range set for Edge Gateway interface %r' %
+                            iface_name)
+                
                 # Parser may have allocated a scalar or list for IP range
                 # setting
                 if isinstance(
@@ -519,7 +532,7 @@ class EdgeGatewayClient(object):
                 return iptools.IpRangeList(
                         *tuple([(i.start_address.value_, i.end_address.value_)
                                 for i in ip_ranges]))
-            
+
     @classmethod
     def _get_edgegateway_update_uri(cls, gateway):
         '''Find update endpoint from returned gateway content
@@ -633,13 +646,6 @@ class EdgeGatewayClient(object):
         nat_service = gateway.configuration.\
             edge_gateway_service_configuration.nat_service
             
-        nat_service_elem = gateway._elem.find(
-                                fixxpath(gateway._elem, cls.NAT_SERVICE_XPATH))
-        if nat_service_elem is None:
-            raise EdgeGatewayClientResourceNotFound('No <NatService/> element '
-                                                    'found in returned Edge '
-                                                    'Gateway configuration')
-
         # Input Gateway may have not had any NAT rules allocated to it 
         # previously
         if not hasattr(nat_service, 'nat_rule'):

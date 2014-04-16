@@ -94,6 +94,7 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
                                                 vdc_name=self.vdc_name,
                                                 names=[self.edgegateway_name])
         
+        self.assertTrue(edgegateway_configs)
         edgegateway_config = edgegateway_configs[0]
         
         inputs = self.edgegateway_clnt.settings[
@@ -112,6 +113,7 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
         edgegateway_configs = self.edgegateway_clnt.get_config(
                                                 vdc_name=self.vdc_name,
                                                 names=[self.edgegateway_name])
+        self.assertTrue(edgegateway_configs)
         edgegateway_config = edgegateway_configs[0]
         
         nat_rule_ids = self.edgegateway_clnt.settings[

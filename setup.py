@@ -39,10 +39,10 @@ setup(
     packages=find_packages(),
     namespace_packages=['jasmincloud', 'jasmincloud.provider',
                         'jasmincloud.provider.vcloud'],
-    install_requires=['apache-libcloud'],
+    install_requires=['apache-libcloud', 'iptools'],
     entry_points={
     'console_scripts': [
-        ('network_client=jasmincloud.provider.vcloud.network.'
+        ('jasmincloud_netclnt=jasmincloud.provider.vcloud.network.'
          'command_line_client:main'),
         ],
     },
