@@ -1,6 +1,6 @@
 """JASMIN Cloud
 
-Cloudhands Provider Interface package - module for handling networking 
+JASMIN Cloud Provider Interface package - module for handling networking 
 functionality
 """
 __author__ = "P J Kershaw"
@@ -17,8 +17,8 @@ from libcloud.compute.providers import Provider, DRIVERS, get_driver
 from libcloud.compute.drivers.vcloud import (get_url_path, fixxpath, 
                                              DEFAULT_TASK_COMPLETION_TIMEOUT)
 
-from cloudhands.provider import utils
-import cloudhands.provider.utils.etree as et_utils
+from jasmincloud.provider import utils
+import jasmincloud.provider.utils.etree as et_utils
 
 
 log = logging.getLogger(__name__)

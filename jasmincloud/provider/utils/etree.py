@@ -1,13 +1,13 @@
 """JASMIN Cloud
 
-Cloudhands Provider Interface package - ElementTree utilities
+JASMIN Cloud Provider Interface package - ElementTree utilities
 """
 __author__ = "P J Kershaw"
 __date__ = "24/03/14"
 __copyright__ = "(C) 2014 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
-from cloudhands.provider import utils
+from jasmincloud.provider import utils
 
 VCD_XML_NS = "http://www.vmware.com/vcloud/v1.5"
 
@@ -57,11 +57,7 @@ def obj_from_elem_walker(elem):
     
     # Add the XML element's attributes as attributes of the new Python
     # object
-<<<<<<< HEAD
     for attrname, attrval in list(elem.attrib.items()):
-=======
-    for attrname, attrval in elem.attrib.items():
->>>>>>> branch 'master' of git@proj.badc.rl.ac.uk:cloudhands-provider-iface.git
         # Make a valid variable name from XML attribute name -
         # et_get_tagname() call strips out ElementTree namespace specifier
         # where needed

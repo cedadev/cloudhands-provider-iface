@@ -1,6 +1,6 @@
 """JASMIN Cloud
 
-Cloudhands Provider Interface package - vCloud sub-package
+JASMIN Cloud Provider Interface package - vCloud sub-package
 
 This is a setuptools namespace_package.  DO NOT place any other
 code in this file!  There is no guarantee that it will be installed

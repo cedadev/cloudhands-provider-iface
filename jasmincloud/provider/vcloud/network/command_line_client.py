@@ -1,6 +1,6 @@
 """JASMIN Cloud
 
-Cloudhands Provider Interface package - command line client for Edge Gateway
+JASMIN Cloud Provider Interface package - command line client for Edge Gateway
 interface
 """
 __author__ = "P J Kershaw"
@@ -13,7 +13,7 @@ import logging
 import argparse
 import xml.etree.ElementTree as ET
 
-from cloudhands.provider.vcloud.network.client import EdgeGatewayClient
+from jasmincloud.provider.vcloud.network.client import EdgeGatewayClient
 
 
 log = logging.getLogger(__name__)

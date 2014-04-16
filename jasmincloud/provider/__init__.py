@@ -1,6 +1,6 @@
 """JASMIN Cloud
 
-Cloudhands Provider Interface package - module for handling functionality
+JASMIN Cloud Provider Interface package - module for handling functionality
 
 This is a setuptools namespace_package.  DO NOT place any other
 code in this file!  There is no guarantee that it will be installed

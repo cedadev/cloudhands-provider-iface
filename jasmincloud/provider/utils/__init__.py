@@ -1,6 +1,6 @@
 """JASMIN Cloud
 
-Cloudhands Provider Interface package - utility functions for converting
+JASMIN Cloud Provider Interface package - utility functions for converting
 variables
 """
 __author__ = "P J Kershaw"

@@ -1,6 +1,6 @@
 """JASMIN Cloud
 
-Cloudhands provider interface functional tests vCloud 5.5 - test networking 
+JASMIN Cloud provider interface functional tests vCloud 5.5 - test networking 
 config - config of Edge device
 """
 __author__ = "P J Kershaw"
@@ -14,7 +14,7 @@ import logging
 
 from libcloud import security
 
-from cloudhands.provider.vcloud.network.client import EdgeGatewayClient
+from jasmincloud.provider.vcloud.network.client import EdgeGatewayClient
 
 
 # Location of the directory containing *this* module
