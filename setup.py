@@ -42,7 +42,7 @@ setup(
     install_requires=['apache-libcloud', 'iptools'],
     entry_points={
     'console_scripts': [
-        ('jasmincloud_netclnt=jasmincloud.provider.vcloud.network.'
+        ('jasmincloud-netclnt=jasmincloud.provider.vcloud.network.'
          'command_line_client:main'),
         ],
     },
