@@ -86,3 +86,14 @@ The above will remove the NAT rules with ids ``12345`` and``67890``
 respectively.  The rule ids can be checked by inspecting the content of the 
 current Edge Gateway configuration.
 
+Installation
+============
+Requires ``iptools`` and ``apache-libcloud``.  As of writing, a forked version
+of libcloud is need.  To install::
+
+    pip install -e git+git@github.com:cedadev/libcloud.git#egg=apache-libcloud
+    
+Follow this step and then install: 
+
+    pip install -e git+git@proj.badc.rl.ac.uk:cloudhands-provider-iface.git#egg=jasmincloud-provider-iface
+

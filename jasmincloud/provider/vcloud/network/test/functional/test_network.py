@@ -44,6 +44,7 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
     # Disable SSL verification for testing ONLY
 #    security.CA_CERTS_PATH = [CA_CERTS_PATH]
     security.VERIFY_SSL_CERT = False
+    password = None
     
     def __init__(self, *arg, **kwarg):
         super(EdgeGatewayClientTestCase, self).__init__(*arg, **kwarg)
@@ -54,8 +55,16 @@ class EdgeGatewayClientTestCase(unittest.TestCase):
         
         con_settings = self.edgegateway_clnt.settings[
                                         EdgeGatewayClient.SETTINGS_GLOBAL]
+        
+        if self.__class__.password is None:
+            if con_settings['password'] is None:
+                import getpass
+                self.__class__.password = getpass.getpass('VCD Password: ')
+            else:
+                self.__class__.password = con_settings['password']
+            
         self.edgegateway_clnt.connect(con_settings['username'], 
-                                      con_settings['password'], 
+                                      self.__class__.password, 
                                       con_settings['hostname'])
         
         self.vdc_name = self.edgegateway_clnt.settings[

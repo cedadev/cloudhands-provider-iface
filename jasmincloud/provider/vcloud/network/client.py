@@ -269,6 +269,13 @@ class EdgeGatewayClient(object):
                 api_version=VCD_API_VERS):
         '''Create vCloud driver and authenticated connection'''
         
+        # Need this explicit check to workaround bug in libcloud vCD driver
+        # If no password is set, it's omitted from the argument list such
+        # the argument order is shuffled up.  The hostname gets set to the port
+        # number!
+        if password is None:
+            raise TypeError('Password not set')
+        
         driver_cls = get_driver(Provider.VCLOUD)
         self.driver = driver_cls(username, password, host=hostname,
                                  api_version=api_version, port=port)
