@@ -189,6 +189,241 @@ class ETreeGatewayNatRule(object):
         
         return gateway_nat_rule_elem
 
+
+class FirewallRule(object):
+    '''Representation of Edge Gateway configuration Firewall Rule
+    
+    '''
+    POLICY_ALLOW = 'allow'
+    POLICY_DROP = 'drop'
+    POLICY_VALUES = (POLICY_ALLOW, POLICY_DROP)
+    
+    DIRECTION_IN = 'in'
+    DIRECTION_OUT = 'out'
+    DIRECTION_VALUES = (DIRECTION_IN, DIRECTION_OUT)
+
+    ANY_PORT = -1
+    ANY_IP = 'Any'
+    
+    def __init__(self, rule_id=-1, rule_is_enabled=False,
+                 match_on_translate=False, description='', policy=POLICY_DROP, 
+                 protocols=None, port=ANY_PORT, dest_port_range=ANY_PORT, 
+                 dest_ip=ANY_IP, src_port=ANY_PORT, src_port_range=ANY_PORT, 
+                 src_ip=ANY_IP, direction=DIRECTION_OUT, enable_logging=False):
+
+        # Initialise protected variables - these have associated properties for
+        # getters and setters
+        self._rule_is_enabled = None
+        self._policy = None
+        self._protocols = {}
+        self._match_on_translate = None
+        self._direction = None
+        self._enable_logging = None
+
+        self.rule_id = rule_id
+        
+        self.rule_is_enabled = rule_is_enabled
+        
+        self.match_on_translate = match_on_translate
+        self.description = description
+        self.policy = policy
+        
+        if protocols is not None:
+            self.protocols = protocols
+            
+        self.port = port
+        self.dest_port_range = dest_port_range
+        self.dest_ip = dest_ip
+        self.src_port = src_port
+        self.src_port_range = src_port_range
+        self.src_ip = src_ip
+        self.direction = direction
+        self.enable_logging = enable_logging
+        
+    @property
+    def rule_is_enabled(self):
+        return self._rule_is_enabled
+    
+    @rule_is_enabled.setter
+    def rule_is_enabled(self, val):
+        if not isinstance(val, bool):
+            raise TypeError("Expecting bool type for 'rule_is_enabled' got: %r"%
+                            type(val)) 
+        self._rule_is_enabled = val
+    
+    @property
+    def policy(self):
+        return self._policy
+    
+    @policy.setter
+    def policy(self, val):
+        if val not in self.__class__.POLICY_VALUES:
+            raise ValueError('Accepted values for "policy" are: %r' %
+                             self.__class__.POLICY_VALUES) 
+
+        self._policy = val
+    
+    @property
+    def protocols(self):
+        return self._protocols.copy()
+    
+    @protocols.setter
+    def protocols(self, val):
+        for k, v in dict(val):
+            if not isinstance(v, basestring):
+                raise TypeError("Expecting string type for protocol name "
+                                "setting; got: %r" % type(val))
+
+            if not isinstance(v, bool):
+                raise TypeError("Expecting bool type for protocol enabled "
+                                "setting; got: %r" % type(val))
+            self._protocols[k] = v
+                        
+    @property
+    def match_on_translate(self):
+        return self._match_on_translate
+    
+    @match_on_translate.setter
+    def match_on_translate(self, val):
+        if not isinstance(val, bool):
+            raise TypeError("Expecting bool type for 'match_on_translate' got: "
+                            "%r" % type(val)) 
+        self._match_on_translate = val
+    
+    @property
+    def direction(self):
+        return self._direction
+    
+    @direction.setter
+    def direction(self, val):
+        if val not in self.__class__.DIRECTION_VALUES:
+            raise ValueError('Accepted values for "direction" are: %r' %
+                             self.__class__.DIRECTION_VALUES) 
+
+        self._direction = val
+                
+    @property
+    def enable_logging(self):
+        return self._enable_logging
+    
+    @enable_logging.setter
+    def enable_logging(self, val):
+        if not isinstance(val, bool):
+            raise TypeError("Expecting bool type for 'enable_logging' got: %r"%
+                            type(val)) 
+        self._enable_logging = val
+        
+        
+class ETreeGatewayFirewallRule(object):
+    '''Class for creating XML serialisation of Gateway Firewall Rule using
+    ElementTree
+    '''
+    VCD_XML_NS = et_utils.VCD_XML_NS
+            
+    TAG = 'FirewallRule'
+    
+    IS_ENABLED_TAG = 'IsEnabled'
+    MATCH_ON_TRANSLATE_TAG = 'MatchOnTranslate'
+    DESCRIPTION_TAG = 'Description'
+    POLICY_TAG = 'Policy'
+    SRC_PORT_TAG = 'SourcePort'
+    SRC_PORT_RANGE_TAG = 'SourcePortRange'
+    SRC_IP_TAG = 'SourceIp'
+    DEST_PORT_TAG = 'Port'
+    DEST_PORT_RANGE_TAG = 'PortRange'
+    DEST_IP_TAG = 'DestinationIp'
+    PROTOCOLS_TAG = 'Protocols'
+    ENABLE_LOGGING_TAG = 'EnableLogging'
+
+    def __init__(self, ns=VCD_XML_NS):
+        self._ns = ns
+        
+    def create_elem(self, firewall_rule):
+        '''Make a Firewall Rule gateway interface XML element
+        '''
+        firewall_rule_elem = ET.Element(
+                        et_utils.mk_tag(self._ns, self.__class__.TAG))
+        
+        is_enabled_elem = ET.SubElement(
+                 firewall_rule_elem, 
+                 et_utils.mk_tag(self._ns, self.__class__.IS_ENABLED_TAG))
+        
+        is_enabled_elem.text = utils.bool2str(firewall_rule.is_enabled)
+        
+        descr_elem = ET.SubElement(
+                firewall_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.DESCRIPTION_TAG))
+        
+        descr_elem.text = firewall_rule.description
+        
+        match_on_translate_elem = ET.SubElement(
+            firewall_rule_elem, 
+            et_utils.mk_tag(self._ns, self.__class__.MATCH_ON_TRANSLATE_TAG))
+        
+        match_on_translate_elem.text = utils.bool2str(
+                                            firewall_rule.match_on_translate)
+        
+        policy_elem = ET.SubElement(
+                firewall_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.POLICY_TAG))
+        
+        policy_elem.text = firewall_rule.policy
+        
+        src_port_elem = ET.SubElement(
+                firewall_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.SRC_PORT_TAG))
+        
+        src_port_elem.text = firewall_rule.src_port
+        
+        src_port_range_elem = ET.SubElement(
+                firewall_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.SRC_RANGE_PORT_TAG))
+        
+        src_port_range_elem.text = firewall_rule.src_port_range
+        
+        src_ip_elem = ET.SubElement(
+                firewall_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.SRC_IP_TAG))
+        
+        src_ip_elem.text = firewall_rule.src_ip
+                
+        dest_port_elem = ET.SubElement(
+                firewall_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.DEST_PORT_TAG))
+        
+        dest_port_elem.text = firewall_rule.dest_port
+        
+        dest_port_range_elem = ET.SubElement(
+                firewall_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.DEST_RANGE_PORT_TAG))
+        
+        dest_port_range_elem.text = firewall_rule.dest_port_range
+        
+        dest_ip_elem = ET.SubElement(
+                firewall_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.DEST_IP_TAG))
+                       
+        dest_ip_elem.text = firewall_rule.dest_ip
+                
+        policy_elem = ET.SubElement(
+                firewall_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.POLICY_TAG))
+        
+        policy_elem.text = firewall_rule.policy
+                
+        protocols_elem = ET.SubElement(
+                firewall_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.PROTOCOLS_TAG))
+        
+        
+        enable_logging_elem = ET.SubElement(
+                firewall_rule_elem, 
+                et_utils.mk_tag(self._ns, self.__class__.ENABLE_LOGGING_TAG))
+        
+        enable_logging_elem.text = utils.bool2str(firewall_rule.enable_logging)
+                
+        return firewall_rule_elem
+                        
     
 class EdgeGatewayClientError(Exception):
     '''Generic exception class for EdgeGatewayClient'''
@@ -634,7 +869,7 @@ class EdgeGatewayClient(object):
     
     @classmethod
     def add_nat_rules(cls, gateway, *arg):
-        '''Add new NAT rule to Edge Gateway Configuration ElementTree
+        '''Add new NAT rules to Edge Gateway Configuration ElementTree
         
         :param gateway: gateway object contains _elem attribute which is the
         root of the Gateway Configuration ElementTree
@@ -697,3 +932,36 @@ class EdgeGatewayClient(object):
             if nat_rule not in nat_rules_del
         ]
         _log_etree_elem(gateway._elem)
+    
+    @classmethod
+    def add_firewall_rules(cls, gateway, *arg):
+        '''Add new Firewall rules to Edge Gateway Configuration ElementTree
+        
+        :param gateway: gateway object contains _elem attribute which is the
+        root of the Gateway Configuration ElementTree
+        '''
+        # NAT rules can be added as an argument list or a single argument which
+        # is a list
+        if len(arg) == 0:
+            raise TypeError('add_firewall_rules expects at least 2 arguments, '
+                            'got 1')
+
+        elif len(arg) == 1 and utils.is_iterable(arg):
+            firewall_rules = arg[0]
+            
+        else:
+            firewall_rules = arg
+            
+        nat_service = gateway.configuration.\
+            edge_gateway_service_configuration.nat_service
+            
+        # Input Gateway may have not had any NAT rules allocated to it 
+        # previously
+        if not hasattr(nat_service, 'firewall_rule'):
+            nat_service.firewall_rule = []
+            
+        ns = et_utils.get_namespace(gateway._elem)
+        
+        for firewall_rule in firewall_rules:
+            nat_service._elem.append(ETreeNatRule(ns=ns).create_elem(firewall_rule))
+            nat_service.firewall_rule.append(firewall_rule)
