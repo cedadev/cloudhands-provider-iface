@@ -7,7 +7,7 @@ __date__ = "24/03/14"
 __copyright__ = "(C) 2014 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
-from jasmincloud.provider import utils
+from jasmincloud.provider.utils import string_utils
 
 VCD_XML_NS = "http://www.vmware.com/vcloud/v1.5"
 
@@ -31,6 +31,7 @@ mk_tag = lambda namespace, tagname: "%s%s%s%s" % (NS_START_DELIM, namespace,
 
 CLASS_NAME_SUFFIX = '_'
 XML_ELEM_VARNAME = 'value_'
+
 
 def obj_from_elem_walker(elem):
     '''Dynamically creates classes corresponding to ElementTree elements and 
@@ -61,9 +62,9 @@ def obj_from_elem_walker(elem):
         # Make a valid variable name from XML attribute name -
         # et_get_tagname() call strips out ElementTree namespace specifier
         # where needed
-        varname = utils.mk_valid_varname(strip_ns_from_tag(attrname))
+        varname = string_utils.mk_valid_varname(strip_ns_from_tag(attrname))
         if varname is not None:
-            setattr(_obj, varname, utils.infer_type_from_str(attrval))
+            setattr(_obj, varname, string_utils.infer_type_from_str(attrval))
     
     # Check for a text setting for the XML element, if present add its
     # content as a new variable 'value_'
@@ -72,7 +73,7 @@ def obj_from_elem_walker(elem):
         if elem_text:
             setattr(_obj, 
                     XML_ELEM_VARNAME, 
-                    utils.infer_type_from_str(elem_text))
+                    string_utils.infer_type_from_str(elem_text))
         
     # Go to the next levels in XML hierarchy recursively adding further
     # child objects to _obj
@@ -83,7 +84,8 @@ def obj_from_elem_walker(elem):
             # More than one XML child element of the same name is present
             
             # Create a Python variable name for it
-            varname = utils.camelcase2underscores(get_tagname(child_elem))
+            varname = string_utils.camelcase2underscores(
+                                                        get_tagname(child_elem))
             
             # Check to see if the current object already has an attribute
             # with this name
@@ -100,7 +102,7 @@ def obj_from_elem_walker(elem):
         else:
             # Only one XML child element exists with this name
             setattr(_obj, 
-                    utils.camelcase2underscores(get_tagname(child_elem)), 
+                    string_utils.camelcase2underscores(get_tagname(child_elem)), 
                     obj_from_elem_walker(child_elem))
         
     return _obj 
