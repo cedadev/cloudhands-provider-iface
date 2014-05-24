@@ -7,7 +7,7 @@ __date__ = "24/03/14"
 __copyright__ = "(C) 2014 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
-from jasmincloud.provider.utils import string_utils
+from jasmincloud.provider.utils import string as string_utils
 
 VCD_XML_NS = "http://www.vmware.com/vcloud/v1.5"
 

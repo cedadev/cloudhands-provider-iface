@@ -1,84 +1,19 @@
 """JASMIN Cloud
 
-JASMIN Cloud Provider Interface package - utility functions for converting
-variables
+JASMIN Cloud Provider Interface package - utilities package 
 """
 __author__ = "P J Kershaw"
 __date__ = "24/03/14"
 __copyright__ = "(C) 2014 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
-import keyword
-import re
-
 try:
     from configparser import SafeConfigParser
     
 except ImportError:
     from ConfigParser import SafeConfigParser
 
-
-is_iterable = lambda obj: getattr(obj, '__iter__', False)
-is_bool = lambda val: val.lower() in ('true', 'false')
-bool2str = lambda val: str(val).lower()
-
-
-def infer_type_from_str(val):
-    '''Attempt to convert a string to its correct equivalent type by checking
-    its content.
-    
-    :ivar val: string to be converted
-    :type val: basestring
-    :return: infered value
-    :rtype: basestring / long / bool or float  
-    '''
-    if is_bool(val):
-        return bool(val)
-    
-    # Try for an integer
-    try:
-        return int(val)
- 
-    except ValueError:
-        # Check for floating point number
-        try:
-            return float(val)
-        
-        except ValueError:
-            # Default to string
-            return val
-
-
-def mk_valid_varname(name):
-    '''Make a valid Python variable name from XML element attributes
-    
-    :ivar name: XML variable name to be converted
-    :type name: basestring
-    :return: equivalent name in lower case with underscores
-    :rtype: basestring
-    '''
-    if not isinstance(name, str):
-        return None
-    
-    varname = camelcase2underscores(re.sub('[^0-9a-zA-Z_]', '_', name))
-
-    # Avoid reserved names
-    if keyword.iskeyword(varname):
-        varname += '_'
-        
-    return varname
-
-
-def camelcase2underscores(varname):
-    '''Convert camel case variable names to underscore equivalent
-    
-    :ivar varname: camel case variable name to be converted
-    :type varname: basestring
-    :return: equivalent name in lower case with underscores
-    :rtype: basestring
-    '''
-    to_underscores_name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', varname)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', to_underscores_name).lower()
+import UserDict
 
 
 class CaseSensitiveConfigParser(SafeConfigParser):
@@ -89,3 +24,82 @@ class CaseSensitiveConfigParser(SafeConfigParser):
     '''
     def optionxform(self, optionstr):
         return optionstr
+
+
+is_iterable = lambda obj: getattr(obj, '__iter__', False)
+
+
+class VettedDict(UserDict.DictMixin):
+    """Enforce custom checking on keys and items before addition to a 
+    dictionary
+    """
+    
+    def __init__(self, *args):
+        """Initialise setting the allowed type or types for keys and items
+        
+        :param args: two arguments: the first is a callable which filters for 
+        permissable keys in this dict, the second sets the type or list of
+        types permissable for items in this dict
+        :type args: tuple
+        """
+        if len(args) != 2:
+            raise TypeError('__init__() takes 2 arguments, key_filter and '
+                            'value_filter (%d given)' % len(args))
+        
+        # Validation of inputs
+        for arg, arg_name in zip(args, ('key_filter', 'value_filter')):
+            if not callable(arg):
+                raise TypeError('Expecting callable for %r input; got %r' % 
+                                (arg_name, type(arg)))
+
+        self.__key_filter, self.__value_filter = args
+        
+        self.__map = {}
+        
+    def _verify_kvpair(self, key, val):
+        """Check given key value pair and return False if they should be 
+        filtered out.  Filter functions may also raise an exception if they
+        wish to abort completely
+        
+        :param key: dict key to check
+        :type key: basestring
+        :param val: value to check
+        :type val: any
+        """
+        if not self.__key_filter(key):
+            return False
+        
+        elif not self.__value_filter(val):
+            return False
+        
+        else:
+            return True
+                  
+    def __setitem__(self, key, val):
+        """Enforce type checking when setting new items
+        
+        :param key: key for item to set
+        :type key: any
+        :param val: value to set for this key
+        :type val: any
+        """       
+        if self._verify_kvpair(key, val):
+            self.__map[key] = val
+
+    def __getitem__(self, key):
+        """Provide implementation for getting items
+        :param key: key for item to retrieve
+        :type key: any
+        :return: value for input key
+        :rtype: any
+        """
+        if key not in self.__map:
+            raise KeyError('%r key not found in dict' % key)
+        
+        return self.__map[key]
+    
+    def keys(self):
+        '''Implementation of keys is required to fulfill dict-like interface
+        required
+        '''
+        return self.__map.keys()
