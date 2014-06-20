@@ -8,17 +8,12 @@ __date__ = "11/06/14"
 __copyright__ = "(C) 2014 Science and Technology Facilities Council"
 __license__ = "BSD - see LICENSE file in top-level directory"
 __revision__ = "$Id$"
-from os import path
 import logging
 import xml.etree.ElementTree as ET
 
-from libcloud.compute.providers import Provider, DRIVERS, get_driver
-from libcloud.compute.drivers.vcloud import (get_url_path, fixxpath, 
-                                             DEFAULT_TASK_COMPLETION_TIMEOUT)
+from libcloud.compute.providers import Provider, get_driver
 
-from jasmincloud.provider.vcloud.network.edge_gateway import (NatRule, 
-                                                              ETreeNatRule)
-from jasmincloud.provider import utils
+
 import jasmincloud.provider.utils.etree as et_utils
 
 
@@ -121,4 +116,6 @@ class UserAdminClient(object):
                                                                role_name))
                 
         # Add the specified role name
+        res = self.driver.connection.request(user_uri, method='POST')
+        _log_etree_elem(res.object)
         

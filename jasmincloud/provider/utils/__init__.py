@@ -13,7 +13,11 @@ try:
 except ImportError:
     from ConfigParser import SafeConfigParser
 
-import UserDict
+try:
+    from collections import UserDict
+    
+except ImportError:
+    import UserDict
 
 
 class CaseSensitiveConfigParser(SafeConfigParser):
