@@ -85,7 +85,7 @@ class EdgeGatewayClientFirewallRuleTestCase(unittest.TestCase):
         try:
             firewall_rule.protocols[0] = True
             
-        except TypeError, e:
+        except TypeError as e:
             log.debug('Exception correctly raised: %r', e)
             pass
         else:
@@ -94,7 +94,7 @@ class EdgeGatewayClientFirewallRuleTestCase(unittest.TestCase):
         try:
             firewall_rule.protocols['tcp'] = 1
             
-        except TypeError, e:
+        except TypeError as e:
             log.debug('Exception correctly raised: %r', e)
             pass
         else:

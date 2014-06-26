@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 
 from jasmincloud.provider.utils import string as string_utils
 from jasmincloud.provider.utils import etree as etree_utils
-from jasmincloud.provider.utils import VettedDict
+from jasmincloud.provider.utils.collections import VettedDict
 
 
 class GatewayNatRule(object):
@@ -207,7 +207,7 @@ class FirewallRule(object):
             
             return True
         
-        self._protocols = VettedDict(lambda k: _type_check(k, basestring), 
+        self._protocols = VettedDict(lambda k: _type_check(k, str), 
                                      lambda v: _type_check(v, bool))
         self._match_on_translate = None
         self._direction = None
@@ -263,7 +263,7 @@ class FirewallRule(object):
     @protocols.setter
     def protocols(self, val):
         for k, v in dict(val):
-            if not isinstance(v, basestring):
+            if not isinstance(v, str):
                 raise TypeError("Expecting string type for protocol name "
                                 "setting; got: %r" % type(val))
 
@@ -409,7 +409,7 @@ class ETreeFirewallRule(object):
                 firewall_rule_elem, 
                 etree_utils.mk_tag(self._ns, self.__class__.PROTOCOLS_TAG))
         
-        for protocol, enabled in firewall_rule.protocols.items():
+        for protocol, enabled in list(firewall_rule.protocols.items()):
             tag_name = protocol.capitalize()
             protocol_elem = ET.SubElement(protocols_elem, 
                                         etree_utils.mk_tag(self._ns, tag_name))

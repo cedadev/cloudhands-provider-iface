@@ -49,7 +49,7 @@ class UserAdminTestCase(unittest.TestCase):
         
         try:
             user_info = self.clnt.get_userinfo(vdc_name=vdc_name)
-        except Exception, e:
+        except Exception as e:
             self.fail(e)
             
         self.assertIsInstance(user_info, UserAdminClient)

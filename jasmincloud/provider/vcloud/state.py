@@ -77,7 +77,7 @@ displ_cls_vars = lambda cls: ["%s = %s" % (k, v)
                               if not k.startswith('_')] 
  
 def print_cls_vars(cls):
-    print('%r' % cls)
+    print(('%r' % cls))
     for i in list(displ_cls_vars(cls)):
         print(i)
           
@@ -92,14 +92,14 @@ def display_vcd2libcloud_mapping(cls):
     node_state = VCloud_1_5_NodeDriver.NODE_STATE_MAP
 
     print('VCD State    libcloud State')
-    print('='*30)
+    print(('='*30))
     for k, v in list(cls.__dict__.items()): 
         if not k.startswith('_'):
             libcloud_state = node_state_.get(node_state.get(str(v[0])))
-            print('%s = %s' % (k, libcloud_state))
+            print(('%s = %s' % (k, libcloud_state)))
         
 if __name__ == '__main__':
-    print('%r' % VCD_STATE_MAP)
+    print(('%r' % VCD_STATE_MAP))
     print_cls_vars(VAppTemplateState)
     print_cls_vars(VAppState)
     print_cls_vars(VmState)

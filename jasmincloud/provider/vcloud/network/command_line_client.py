@@ -76,7 +76,7 @@ def main():
     
     if action_name is None:
         # Default to display the current configuration
-        print(ET.tostring(edgegateway_configs[0]._elem))
+        print((ET.tostring(edgegateway_configs[0]._elem)))
         
     elif action_name == EdgeGatewayClient.SETTINGS_ROUTE_HOST:
         settings = edgegateway_clnt.settings[action_name]
